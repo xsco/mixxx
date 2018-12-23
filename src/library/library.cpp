@@ -28,6 +28,7 @@
 #include "library/traktor/traktorfeature.h"
 #include "library/librarycontrol.h"
 #include "library/setlogfeature.h"
+#include "library/export/libraryexporter.h"
 #include "util/db/dbconnectionpooled.h"
 #include "util/sandbox.h"
 #include "util/logger.h"
@@ -417,6 +418,12 @@ void Library::slotRequestRelocateDir(QString oldDir, QString newDir) {
     if (oldDir == conDir) {
         m_pConfig->set(PREF_LEGACY_LIBRARY_DIR, newDir);
     }
+}
+
+void Library::slotExportLibrary() {
+    // Delegate to the library exporter
+    LibraryExporter exporter{nullptr, m_pConfig};
+    exporter.exportLibrary();
 }
 
 QStringList Library::getDirs() {

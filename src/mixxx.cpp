@@ -1070,6 +1070,8 @@ void MixxxMainWindow::connectMenuBar() {
                 m_pMenuBar, SLOT(onLibraryScanFinished()));
         connect(m_pMenuBar, SIGNAL(rescanLibrary()),
                 m_pLibrary, SLOT(scan()));
+        connect(m_pMenuBar, SIGNAL(exportLibrary()),
+                m_pLibrary, SLOT(slotExportLibrary()));
     }
 
 }

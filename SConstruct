@@ -66,7 +66,8 @@ available_features = [features.Mad,
 
                       # Experimental features
                       features.OpenGLES,
-                      features.QtKeychain
+                      features.QtKeychain,
+                      features.DjInterop
                       ]
 
 build = mixxx.MixxxBuild(target, machine, build_type,

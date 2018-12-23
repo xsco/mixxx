@@ -98,6 +98,7 @@ class Library: public QObject,
     void slotRequestAddDir(QString directory);
     void slotRequestRemoveDir(QString directory, Library::RemovalType removalType);
     void slotRequestRelocateDir(QString previousDirectory, QString newDirectory);
+    void slotExportLibrary();
     void onSkinLoadFinished();
 
     void scan() {

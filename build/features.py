@@ -1338,3 +1338,21 @@ class QtKeychain(Feature):
 
     def depends(self, build):
         return [depends.QtKeychain]
+
+class DjInterop(Feature):
+    def description(self):
+        return "Interopability with other DJ library formats"
+    
+    def enabled(self, build):
+        build.flags['djinterop'] = util.get_flags(build.env, 'djinterop', 1)
+        if int(build.flags['djinterop']):
+            return True
+        return False
+    
+    def configure(self, build, conf):
+        """(Currently only tested on Linux)"""
+        if not build.platform_is_linux:
+            return
+        build.env.ParseConfig(
+                'pkg-config libdjinterop --silence-errors --cflags --libs')
+        build.env.Append(CPPDEFINES='__DJINTEROP__')
