@@ -21,23 +21,54 @@ void LibraryExporter::exportLibrary() {
             ConfigKey("[Library]", "LastLibraryExportDirectory"),
             QDesktopServices::storageLocation(QDesktopServices::DocumentsLocation));
 
-    QString destDir = QFileDialog::getExistingDirectory(
+    QString destDirStr = QFileDialog::getExistingDirectory(
             NULL, tr("Export Library To"), lastExportDirectory);
-    if (destDir.isEmpty()) {
+    if (destDirStr.isEmpty()) {
         return;
     }
     m_pConfig->set(ConfigKey("[Library]", "LastLibraryExportDirectory"),
-                   ConfigValue(destDir));
+                   ConfigValue(destDirStr));
 
-    // TODO - check to see if destDir ends in "Engine Library" or not, and then
-    // ensure we have a root folder to work with.
+    // Check to see if destDir ends in "Engine Library" or not, and then ensure
+    // we have the right folder to work with.
+    QDir destDir{destDirStr};
+    if (destDir.dirName() != "Engine Library")
+    {
+    	// Ensure we are working with the Engine Library directory.
+    	destDirStr = destDir.filePath("Engine Library");
+    }
 
     // TODO - check for presence of any existing database.  If there is already
     // one, prompt for whether to merge into it or not.
-    el::database db{destDir.toStdString()};
-    qInfo() << "Does DB exist? " << db.exists();
+    el::database db{destDirStr.toStdString()};
+    if (db.exists())
+    {
+    	int ret = QMessageBox::question(
+    			NULL,
+				tr("Merge Into Existing Library?"),
+				tr("There is already an existing library in directory ") +
+				destDirStr +
+				tr("\nIf you proceed, the Mixxx library will be merged into "
+				   "this existing library.  Do you want to merge into the "
+				   "the existing library?"),
+				QMessageBox::Yes | QMessageBox::Cancel,
+				QMessageBox::Cancel);
+    	if (ret != QMessageBox::Yes)
+    	{
+    		return;
+    	}
+    }
+    else
+    {
+    	// Create new database.
+    	qInfo() << "Creating new empty database in " << destDirStr;
+    	db = el::create_database(destDirStr.toStdString(), el::version_1_7_1);
+    }
 
-    // TODO - not yet implemented - create new database if required
     // TODO - copy music files into a new "Mixxx Music" sub-directory
-    // TODO - write DB metadata
+    // TODO - write DB metadata, incl. track, beat grid, waveforms, crates, etc.
+    // TODO - set up a QProgressDialog in modal mode, loop over files, etc.
+
+    // All done.
+    qInfo() << "Library exported to path " << destDirStr;
 }
