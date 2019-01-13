@@ -14,11 +14,18 @@
 
 #include "preferences/usersettings.h"
 
+class TrackCollection;
+
 class LibraryExporter : public QObject {
   Q_OBJECT
   public:
-    LibraryExporter(QWidget *parent, UserSettingsPointer pConfig)
-        : m_parent(parent), m_pConfig(pConfig)
+    LibraryExporter(
+    		QWidget *parent,
+			UserSettingsPointer pConfig,
+			TrackCollection *pTrackCollection) :
+        m_parent{parent},
+		m_pConfig{pConfig},
+		m_pTrackCollection{pTrackCollection}
     {}
 
     virtual ~LibraryExporter() { }
@@ -30,6 +37,7 @@ class LibraryExporter : public QObject {
   private:
     QWidget* m_parent;
     UserSettingsPointer m_pConfig;
+    TrackCollection *m_pTrackCollection;
 };
 
 #endif  // LIBRARYEXPORTER_H

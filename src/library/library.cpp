@@ -422,7 +422,7 @@ void Library::slotRequestRelocateDir(QString oldDir, QString newDir) {
 
 void Library::slotExportLibrary() {
     // Delegate to the library exporter
-    LibraryExporter exporter{nullptr, m_pConfig};
+    LibraryExporter exporter{nullptr, m_pConfig, m_pTrackCollection};
     exporter.exportLibrary();
 }
 

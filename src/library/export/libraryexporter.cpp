@@ -8,6 +8,7 @@
 
 #include <djinterop/enginelibrary.hpp>
 
+#include "library/trackcollection.h"
 #include "util/assert.h"
 
 namespace el = djinterop::enginelibrary;
