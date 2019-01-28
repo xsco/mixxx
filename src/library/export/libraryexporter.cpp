@@ -17,6 +17,50 @@ namespace el = djinterop::enginelibrary;
 const auto engineLibraryDirName = "Engine Library";
 const auto mixxxExportDirName = "MixxxExport";
 
+const el::musical_key keyMap[] =
+{
+  el::musical_key::c_major,       // INVALID = 0,
+  el::musical_key::c_major,       // C_MAJOR = 1,
+  el::musical_key::d_flat_major,  // D_FLAT_MAJOR = 2,
+  el::musical_key::d_major,       // D_MAJOR = 3,
+  el::musical_key::e_flat_major,  // E_FLAT_MAJOR = 4,
+  el::musical_key::e_major,       // E_MAJOR = 5,
+  el::musical_key::f_major,       // F_MAJOR = 6,
+  el::musical_key::f_sharp_major, // F_SHARP_MAJOR = 7,
+  el::musical_key::g_major,       // G_MAJOR = 8,
+  el::musical_key::a_flat_major,  // A_FLAT_MAJOR = 9,
+  el::musical_key::a_major,       // A_MAJOR = 10,
+  el::musical_key::b_flat_major,  // B_FLAT_MAJOR = 11,
+  el::musical_key::b_major,       // B_MAJOR = 12,
+  el::musical_key::c_minor,       // C_MINOR = 13,
+  el::musical_key::d_flat_minor,  // C_SHARP_MINOR = 14,
+  el::musical_key::d_minor,       // D_MINOR = 15,
+  el::musical_key::e_flat_minor,  // E_FLAT_MINOR = 16,
+  el::musical_key::e_minor,       // E_MINOR = 17,
+  el::musical_key::f_minor,       // F_MINOR = 18,
+  el::musical_key::f_sharp_minor, // F_SHARP_MINOR = 19,
+  el::musical_key::g_minor,       // G_MINOR = 20,
+  el::musical_key::a_flat_minor,  // G_SHARP_MINOR = 21,
+  el::musical_key::a_minor,       // A_MINOR = 22,
+  el::musical_key::b_flat_minor,  // B_FLAT_MINOR = 23,
+  el::musical_key::b_minor,       // B_MINOR = 24
+};
+
+static el::track createOrLoadTrack(
+		const el::database &db, const QString &relPath)
+{
+	auto ids = el::find_track_ids_by_path(db, relPath.toStdString());
+	if (ids.empty())
+		return el::track{};
+	else
+		return el::track{db, ids[0]};
+}
+
+static el::musical_key convertKey(mixxx::track::io::key::ChromaticKey key)
+{
+	return keyMap[key];
+}
+
 void LibraryExporter::exportLibrary() {
 
     // For now, we can only export in Engine Prime / Engine Library format
@@ -104,6 +148,9 @@ void LibraryExporter::exportLibrary() {
     	trackIds.append(m_pTrackCollection->getTrackDAO().getTrackIds(*iter));
     auto numTracks = trackIds.size();
 
+    // Keep a mapping from Mixxx track id to EL track id
+    QHash<int, int> trackIdToElId;
+
     // Run a modal progress dialog as we export each track.
     qInfo() << "Copying tracks to " << exDirStr;
     QProgressDialog progressFiles{
@@ -156,7 +203,52 @@ void LibraryExporter::exportLibrary() {
     		QFile::copy(srcFilePath, dstFilePath);
     	}
 
+    	// Create or update a track record.
+    	QString trackRelPath = "../";
+    	trackRelPath = trackRelPath + mixxxExportDirName + "/" + dstFilename;
+    	auto t = createOrLoadTrack(db, trackRelPath);
+    	t.set_track_number(trackPtr->getTrackNumber().toInt());
+    	t.set_duration(std::chrono::seconds{trackPtr->getDurationInt()});
+    	t.set_bpm((int)trackPtr->getBpm());
+    	t.set_year(trackPtr->getYear().toInt());
+    	t.set_title(trackPtr->getTitle().toStdString());
+    	t.set_artist(trackPtr->getArtist().toStdString());
+    	t.set_album(trackPtr->getAlbum().toStdString());
+    	t.set_genre(trackPtr->getGenre().toStdString());
+    	t.set_comment(trackPtr->getComment().toStdString());
+    	t.set_composer(trackPtr->getComposer().toStdString());
+    	auto key = trackPtr->getKey();
+    	auto elKey = convertKey(key);
+    	if (key != mixxx::track::io::key::INVALID)
+    		t.set_key(elKey);
+    	t.set_path(trackRelPath.toStdString());
+    	t.set_filename(srcFileInfo.fileName().toStdString());
+    	t.set_file_extension(srcFileInfo.suffix().toStdString());
+    	std::chrono::system_clock::time_point lastModifiedAt{
+    		std::chrono::milliseconds{
+    			trackPtr->getFileModifiedTime().toMSecsSinceEpoch()}};
+    	t.set_last_modified_at(lastModifiedAt);
+    	t.set_bitrate(trackPtr->getBitrate());
+    	t.set_ever_played(trackPtr->getTimesPlayed() > 0);
+    	t.set_imported(false); // Not imported from another EL database
+    	t.set_no_album_art(); // Album art is not currently supported
+    	t.save(db);
+
+    	// Add to the mapping of track ids
+    	trackIdToElId[trackId.value()] = t.id();
+
+    	// Write the performance data record
+    	auto perfDataExists = el::performance_data::exists(db, t.id());
+    	el::performance_data p = perfDataExists
+    			? el::performance_data{db, t.id()}
+    			: el::performance_data{t.id()};
+
+    	auto beats = trackPtr->getBeats();
+    	auto cues = trackPtr->getCuePoints();
+    	p.set_sample_rate(trackPtr->getSampleRate());
+
     	// TODO - write DB metadata, incl. track, beat grid, waveforms, etc.
+    	p.save(db);
 
     	// Abort the export operation if cancelled.
     	if (progressFiles.wasCanceled())
