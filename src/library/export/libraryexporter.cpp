@@ -152,7 +152,6 @@ void LibraryExporter::exportLibrary() {
     QHash<int, int> trackIdToElId;
 
     // Run a modal progress dialog as we export each track.
-    qInfo() << "Copying tracks to " << exDirStr;
     QProgressDialog progressFiles{
     	"Copying tracks...",
 		"Cancel",
@@ -160,11 +159,17 @@ void LibraryExporter::exportLibrary() {
 		numTracks,
     	m_parent};
     progressFiles.setWindowModality(Qt::WindowModal);
-    for (auto i = 0; i < numTracks; ++i)
+    int numTracksExported = 0;
+    for (int i = 0; i < numTracks; ++i)
     {
     	progressFiles.setValue(i);
     	auto trackId = trackIds[i];
     	auto trackPtr = m_pTrackCollection->getTrackDAO().getTrack(trackId);
+
+        // FIXME - for testing, only bother to export tracks that we have beats and waveform analysis for.
+        // TODO/FIXME - waveform summary is not loaded by default!!
+        if (trackPtr->getBeats() == nullptr || trackPtr->getWaveformSummary() == nullptr)
+            continue;
 
     	// Check if the file format is supported by Engine Library.
     	// Supported file formats are:
@@ -182,6 +187,7 @@ void LibraryExporter::exportLibrary() {
     	// been modified (or the destination doesn't exist).  To ensure no
     	// chance of filename clashes, and to keep things simple, we will name
     	// the destination files after the DB track identifier.
+        // TODO - put some stopwatches in to test copy/EL speed on slow USB sticks.
     	auto srcFileInfo = trackPtr->getFileInfo();
     	QString dstFilename =
 			QString::number(trackId.value()) +
@@ -206,7 +212,7 @@ void LibraryExporter::exportLibrary() {
     	// Create or update a track record.
     	QString trackRelPath = "../";
     	trackRelPath = trackRelPath + mixxxExportDirName + "/" + dstFilename;
-    	auto t = createOrLoadTrack(db, trackRelPath);
+        el::track t = createOrLoadTrack(db, trackRelPath);
     	t.set_track_number(trackPtr->getTrackNumber().toInt());
     	t.set_duration(std::chrono::seconds{trackPtr->getDurationInt()});
     	t.set_bpm((int)trackPtr->getBpm());
@@ -218,7 +224,7 @@ void LibraryExporter::exportLibrary() {
     	t.set_comment(trackPtr->getComment().toStdString());
     	t.set_composer(trackPtr->getComposer().toStdString());
     	auto key = trackPtr->getKey();
-    	auto elKey = convertKey(key);
+        el::musical_key elKey = convertKey(key);
     	if (key != mixxx::track::io::key::INVALID)
     		t.set_key(elKey);
     	t.set_path(trackRelPath.toStdString());
@@ -238,16 +244,95 @@ void LibraryExporter::exportLibrary() {
     	trackIdToElId[trackId.value()] = t.id();
 
     	// Write the performance data record
-    	auto perfDataExists = el::performance_data::exists(db, t.id());
+    	bool perfDataExists = el::performance_data::exists(db, t.id());
     	el::performance_data p = perfDataExists
     			? el::performance_data{db, t.id()}
     			: el::performance_data{t.id()};
 
-    	auto beats = trackPtr->getBeats();
-    	auto cues = trackPtr->getCuePoints();
+        // Frames used interchangeably with "samples" here.
+        double totalFrames = trackPtr->getDuration() * trackPtr->getSampleRate();
     	p.set_sample_rate(trackPtr->getSampleRate());
+        p.set_total_samples(totalFrames);
+        p.set_key(elKey);
+        //p.set_average_loudness(...) TODO - set average loudness
 
-    	// TODO - write DB metadata, incl. track, beat grid, waveforms, etc.
+        // Fill in beat grid.  For now, assume a constant average BPM across
+        // the whole track.  Note that points in the track are specified as
+        // "play positions", which are twice the sample offset.
+    	BeatsPointer beats = trackPtr->getBeats();
+        double firstBeatPlayPos = beats->findNextBeat(0);
+        double lastBeatPlayPos = beats->findPrevBeat(totalFrames * 2);
+        double numBeats = beats->numBeatsInRange(firstBeatPlayPos, lastBeatPlayPos);
+        el::track_beat_grid elGrid{0, firstBeatPlayPos / 2, numBeats, lastBeatPlayPos / 2};
+        el::normalise_beat_grid(elGrid, totalFrames);
+        p.set_default_beat_grid(elGrid);
+        p.set_adjusted_beat_grid(elGrid);
+
+        // Write cues
+        std::vector<el::track_hot_cue_point> hotCues; // TODO - empty for now
+        p.set_hot_cues(std::begin(hotCues), std::end(hotCues));
+        double cuePlayPos = trackPtr->getCuePoint();
+        p.set_default_main_cue_sample_offset(cuePlayPos / 2);
+        p.set_adjusted_main_cue_sample_offset(cuePlayPos / 2);
+    	auto cues = trackPtr->getCuePoints();
+
+        // TODO - fill in loops
+       
+        // Write overview/summary waveform
+        auto overviewWaveform = trackPtr->getWaveformSummary();
+        if (overviewWaveform != nullptr)
+        {
+            uint_least64_t overviewAdjustedTotalSamples, overviewNumEntries;
+            double overviewSamplesPerEntry;
+            el::calculate_overview_waveform_details(
+                    totalFrames, trackPtr->getSampleRate(),
+                    overviewAdjustedTotalSamples, overviewNumEntries,
+                    overviewSamplesPerEntry);
+            std::vector<el::overview_waveform_entry> elOverviewWaveform;
+            for (uint_least64_t i = 0; i < overviewNumEntries; ++i)
+            {
+                auto j = overviewWaveform->getDataSize() * i / overviewNumEntries;
+                elOverviewWaveform.push_back(el::overview_waveform_entry{
+                    overviewWaveform->getLow(j),
+                    overviewWaveform->getMid(j),
+                    overviewWaveform->getHigh(j)});
+            }
+            p.set_overview_waveform_entries(
+                    overviewNumEntries,
+                    overviewSamplesPerEntry,
+                    std::begin(elOverviewWaveform),
+                    std::end(elOverviewWaveform));
+        }
+
+        // Write high-resolution full waveform
+        auto highResWaveform = trackPtr->getWaveform();
+        if (highResWaveform != nullptr)
+        {
+            uint_least64_t highResAdjustedTotalSamples, highResNumEntries;
+            double highResSamplesPerEntry;
+            el::calculate_high_res_waveform_details(
+                    totalFrames, trackPtr->getSampleRate(),
+                    highResAdjustedTotalSamples, highResNumEntries,
+                    highResSamplesPerEntry);
+            std::vector<el::high_res_waveform_entry> elHighResWaveform;
+            for (uint_least64_t i = 0; i < highResNumEntries; ++i)
+            {
+                auto j = highResWaveform->getDataSize() * i / highResNumEntries;
+                elHighResWaveform.push_back(el::high_res_waveform_entry{
+                    highResWaveform->getLow(j),
+                    highResWaveform->getMid(j),
+                    highResWaveform->getHigh(j),
+                    127,
+                    127,
+                    127});
+            }
+            p.set_high_res_waveform_entries(
+                    highResNumEntries,
+                    highResSamplesPerEntry,
+                    std::begin(elHighResWaveform),
+                    std::end(elHighResWaveform));
+        }
+
     	p.save(db);
 
     	// Abort the export operation if cancelled.
@@ -262,12 +347,15 @@ void LibraryExporter::exportLibrary() {
 					QMessageBox::Ok);
     		return;
     	}
+
+        ++numTracksExported;
     }
     progressFiles.setValue(numTracks);
 
     // TODO - export crates
 
     // All done.
+    qInfo() << "Exported" << numTracksExported << "out of" << numTracks << "tracks";
     QMessageBox::information(
     		m_parent,
 			tr("Export Completed"),

@@ -1354,5 +1354,5 @@ class DjInterop(Feature):
         if not build.platform_is_linux:
             return
         build.env.ParseConfig(
-                'pkg-config libdjinterop --silence-errors --cflags --libs')
+                'pkg-config djinterop --silence-errors --cflags --libs')
         build.env.Append(CPPDEFINES='__DJINTEROP__')
