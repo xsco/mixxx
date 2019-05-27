@@ -39,6 +39,7 @@
 #include "library/coverartcache.h"
 #include "library/library.h"
 #include "library/library_preferences.h"
+#include "library/export/libraryexporter.h"
 #include "controllers/controllermanager.h"
 #include "controllers/keyboard/keyboardeventfilter.h"
 #include "mixer/playermanager.h"
@@ -146,6 +147,7 @@ MixxxMainWindow::MixxxMainWindow(QApplication* pApp, const CmdlineArgs& args)
           m_pMenuBar(nullptr),
           m_pDeveloperToolsDlg(nullptr),
           m_pPrefDlg(nullptr),
+          m_pLibraryExporter(nullptr),
           m_pKbdConfig(nullptr),
           m_pKbdConfigEmpty(nullptr),
           m_toolTipsCfg(mixxx::TooltipsPreference::TOOLTIPS_ON),
@@ -405,6 +407,9 @@ void MixxxMainWindow::initialize(QApplication* pApp, const CmdlineArgs& args) {
     m_pPrefDlg->setWindowIcon(QIcon(":/images/mixxx_icon.svg"));
     m_pPrefDlg->setHidden(true);
 
+    // Initialise library exporter
+    m_pLibraryExporter = m_pLibrary->makeLibraryExporter(this);
+
     launchProgress(60);
 
     // Connect signals to the menubar. Should be done before we go fullscreen
@@ -632,6 +637,9 @@ void MixxxMainWindow::finalize() {
     // components are accessing those files at this point.
     qDebug() << t.elapsed(false) << "deactivating GlobalTrackCache";
     GlobalTrackCacheLocker().deactivateCache();
+
+    qDebug() << t.elapsed(false).debugMillisWithUnit() << "deleting LibraryExporter";
+    delete m_pLibraryExporter;
 
     // Delete the library after the view so there are no dangling pointers to
     // the data models.
@@ -1070,10 +1078,12 @@ void MixxxMainWindow::connectMenuBar() {
                 m_pMenuBar, SLOT(onLibraryScanFinished()));
         connect(m_pMenuBar, SIGNAL(rescanLibrary()),
                 m_pLibrary, SLOT(scan()));
-        connect(m_pMenuBar, SIGNAL(exportLibrary()),
-                m_pLibrary, SLOT(slotExportLibrary()));
     }
 
+    if (m_pLibraryExporter) {
+        connect(m_pMenuBar, SIGNAL(exportLibrary()),
+                m_pLibraryExporter, SLOT(requestExport()));
+    }
 }
 
 void MixxxMainWindow::slotFileLoadSongPlayer(int deck) {

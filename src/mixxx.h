@@ -50,6 +50,7 @@ class SkinLoader;
 class SoundManager;
 class VinylControlManager;
 class WMainMenuBar;
+class LibraryExporter;
 
 typedef QSharedPointer<SettingsManager> SettingsManagerPointer;
 
@@ -183,6 +184,9 @@ class MixxxMainWindow : public QMainWindow {
 
     /** Pointer to preference dialog */
     DlgPreferences* m_pPrefDlg;
+
+    // Library exporter
+    LibraryExporter *m_pLibraryExporter;
 
     ConfigObject<ConfigValueKbd>* m_pKbdConfig;
     ConfigObject<ConfigValueKbd>* m_pKbdConfigEmpty;

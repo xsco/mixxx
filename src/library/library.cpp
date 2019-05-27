@@ -420,12 +420,6 @@ void Library::slotRequestRelocateDir(QString oldDir, QString newDir) {
     }
 }
 
-void Library::slotExportLibrary() {
-    // Delegate to the library exporter
-    LibraryExporter exporter{nullptr, m_pConfig, m_pTrackCollection};
-    exporter.exportLibrary();
-}
-
 QStringList Library::getDirs() {
     return m_pTrackCollection->getDirectoryDAO().getDirs();
 }
@@ -443,6 +437,12 @@ void Library::setRowHeight(int rowHeight) {
 void Library::setEditMedatataSelectedClick(bool enabled) {
     m_editMetadataSelectedClick = enabled;
     emit(setSelectedClick(enabled));
+}
+
+LibraryExporter *Library::makeLibraryExporter(QWidget *parent) {
+    // New object is expected to be owned (and lifecycle-managed)
+    // by the supplied parent widget.
+    return new LibraryExporter(parent, m_pConfig, m_pTrackCollection);
 }
 
 void Library::saveCachedTrack(Track* pTrack) noexcept {

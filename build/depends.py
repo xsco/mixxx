@@ -1021,6 +1021,8 @@ class MixxxCore(Feature):
                    "library/export/trackexportwizard.cpp",
                    "library/export/trackexportworker.cpp",
                    "library/export/libraryexporter.cpp",
+                   "library/export/libraryexportworker.cpp",
+                   "library/export/dlglibraryexport.cpp",
 
                    "library/recording/recordingfeature.cpp",
                    "library/recording/dlgrecording.cpp",

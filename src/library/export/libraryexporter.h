@@ -1,11 +1,3 @@
-// TrackExportWizard handles exporting a list of tracks to an external directory
-//
-// TODO:
-//   * Offer customizable file renaming
-//   * Offer the option to transcode files to the codec of choice (e.g.,
-//     FLAC -> AIFF for CDJ
-//   * Export sidecar metadata files for import into Mixxx
-
 #ifndef LIBRARYEXPORTER_H
 #define LIBRARYEXPORTER_H
 
@@ -13,31 +5,29 @@
 #include <QScopedPointer>
 
 #include "preferences/usersettings.h"
+#include "library/export/dlglibraryexport.h"
+#include "library/export/libraryexportworker.h"
 
-class TrackCollection;
-
+// The LibraryExporter class holds both a library export dialog and a library
+// export worker, managing the communication between them and allowing the user
+// to easily kick off a library export.
 class LibraryExporter : public QObject {
   Q_OBJECT
-  public:
+public:
     LibraryExporter(
-    		QWidget *parent,
-			UserSettingsPointer pConfig,
-			TrackCollection *pTrackCollection) :
-        m_parent{parent},
-		m_pConfig{pConfig},
-		m_pTrackCollection{pTrackCollection}
-    {}
+            QWidget *parent,
+            UserSettingsPointer pConfig,
+            TrackCollection *pTrackCollection);
 
     virtual ~LibraryExporter() { }
 
-    // Displays a dialog requesting destination directory, then performs
-    // a full library export if a directory is chosen.
-    void exportLibrary();
+public slots:
+    void requestExport();
 
-  private:
-    QWidget* m_parent;
-    UserSettingsPointer m_pConfig;
-    TrackCollection *m_pTrackCollection;
+private:
+    LibraryExportWorker *m_pWorker;
+    DlgLibraryExport *m_pDialog;
 };
 
-#endif  // LIBRARYEXPORTER_H
+#endif // LIBRARYEXPORTER_H
+

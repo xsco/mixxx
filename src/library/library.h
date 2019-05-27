@@ -34,6 +34,7 @@ class CrateFeature;
 class LibraryControl;
 class KeyboardEventFilter;
 class PlayerManagerInterface;
+class LibraryExporter;
 
 class Library: public QObject,
     public virtual /*implements*/ GlobalTrackCacheSaver {
@@ -84,6 +85,8 @@ class Library: public QObject,
     void setRowHeight(int rowHeight);
     void setEditMedatataSelectedClick(bool enable);
 
+    LibraryExporter *makeLibraryExporter(QWidget *parent);
+
   public slots:
     void slotShowTrackModel(QAbstractItemModel* model);
     void slotSwitchToView(const QString& view);
@@ -98,7 +101,6 @@ class Library: public QObject,
     void slotRequestAddDir(QString directory);
     void slotRequestRemoveDir(QString directory, Library::RemovalType removalType);
     void slotRequestRelocateDir(QString previousDirectory, QString newDirectory);
-    void slotExportLibrary();
     void onSkinLoadFinished();
 
     void scan() {
