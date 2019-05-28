@@ -31,13 +31,18 @@ DlgLibraryExport::DlgLibraryExport(
             this, &DlgLibraryExport::crateSelectionChanged);
 
     auto *formLayout = new QFormLayout();
-
     this->exportDirTextField_ = new QLineEdit();
     this->exportDirTextField_->setReadOnly(true);
     this->engineLibraryDirTextField_ = new QLineEdit();
     this->engineLibraryDirTextField_->setReadOnly(true);
     this->musicFilesDirTextField_ = new QLineEdit();
     this->musicFilesDirTextField_->setReadOnly(true);
+    auto *trackAnalysisNoteField = new QLabel(tr(
+                "Note: all affected music files will be scheduled for "
+                "analysis before they can be exported.  This can take some "
+                "time if there are many tracks requiring analysis in the music "
+                "library or selected crates."));
+    trackAnalysisNoteField->setWordWrap(true);
     auto *exportDirBrowseButton = new QPushButton(tr("Browse"));
     auto *exportDirLayout = new QHBoxLayout();
     exportDirLayout->addWidget(this->exportDirTextField_);
@@ -48,6 +53,7 @@ DlgLibraryExport::DlgLibraryExport(
     formLayout->addRow(tr("Base export directory"), exportDirLayout);
     formLayout->addRow(tr("Engine Library export directory"), this->engineLibraryDirTextField_);
     formLayout->addRow(tr("Copy music files to"), this->musicFilesDirTextField_);
+    formLayout->addRow(trackAnalysisNoteField);
 
     auto *buttonBarLayout = new QHBoxLayout();
     auto *exportButton = new QPushButton(tr("Export"));
@@ -80,10 +86,18 @@ void DlgLibraryExport::reset() {
     this->wholeLibraryRadio_->setChecked(true);
     this->exportWholeLibrarySelected();
 
-    // TODO - get from track collection
-    QStringList crates = { "Crate 1", "Crate 2", "Crate 3", "Crate 4", "Crate 5" };
+    // Populate list of crates.
+    auto crates = m_pTrackCollection->crates().selectCrates();
     this->cratesList_->clear();
-    this->cratesList_->insertItems(0, crates);
+    Crate crate;
+    while (crates.populateNext(&crate))
+    {
+        auto *item = new QListWidgetItem{crate.getName()};
+        QVariant variant;
+        variant.setValue(crate.getId().value());
+        item->setData(Qt::UserRole, variant);
+        this->cratesList_->addItem(item);
+    }
 
     this->exportDirTextField_->clear();
     this->engineLibraryDirTextField_->clear();
@@ -107,7 +121,9 @@ void DlgLibraryExport::crateSelectionChanged()
     m_model.selectedCrates.clear();
     for (auto *item : this->cratesList_->selectedItems())
     {
-        m_model.selectedCrates.insert(item->text());
+        QVariant variant = item->data(Qt::UserRole);
+        CrateId id{variant.value<int>()};
+        m_model.selectedCrates.insert(id);
     }
 }
 

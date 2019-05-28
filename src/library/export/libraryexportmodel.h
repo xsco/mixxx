@@ -3,12 +3,13 @@
 
 #include <QSet>
 #include <QString>
+#include "library/crate/crateid.h"
 
 struct LibraryExportModel {
     QString engineLibraryDir;
     QString musicFilesDir;
     bool exportEntireMusicLibrary;
-    QSet<QString> selectedCrates;
+    QSet<CrateId> selectedCrates;
 
     void clear() {
         engineLibraryDir.clear();

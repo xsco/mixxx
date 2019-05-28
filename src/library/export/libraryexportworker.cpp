@@ -67,6 +67,12 @@ void LibraryExportWorker::startExport() {
 
     qInfo() << "EL directory: " << m_model.engineLibraryDir;
     qInfo() << "Music export directory: " << m_model.musicFilesDir;
+    if (m_model.exportEntireMusicLibrary) {
+        qInfo() << "Exporting ENTIRE music library...";
+    }
+    else {
+        qInfo() << "Exporting selected crates...";
+    }
 
     /*
     // Check for presence of any existing database.  If there is already one,
