@@ -20,7 +20,7 @@ public:
             QWidget *parent,
             UserSettingsPointer pConfig,
             TrackCollection *pTrackCollection,
-            LibraryExportModel &model);
+            QSharedPointer<LibraryExportModel> pModel);
 
     // Reset dialog (and model) back to its initial state.
     void reset();
@@ -36,14 +36,14 @@ private:
     UserSettingsPointer m_pConfig;
     TrackCollection *m_pTrackCollection;
 
-    QRadioButton *wholeLibraryRadio_;
-    QRadioButton *cratesRadio_;
-    QListWidget *cratesList_;
-    QLineEdit *exportDirTextField_;
-    QLineEdit *engineLibraryDirTextField_;
-    QLineEdit *musicFilesDirTextField_;
+    QRadioButton *m_pWholeLibraryRadio_;
+    QRadioButton *m_pCratesRadio;
+    QListWidget *m_pCratesList;
+    QLineEdit *m_pExportDirTextField;
+    QLineEdit *m_pEngineLibraryDirTextField;
+    QLineEdit *m_pMusicFilesDirTextField;
 
-    LibraryExportModel &m_model;
+    QSharedPointer<LibraryExportModel> m_pModel;
 };
 
 #endif // DLGLIBRARYEXPORT_H

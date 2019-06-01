@@ -8,35 +8,35 @@ DlgLibraryExport::DlgLibraryExport(
         QWidget *parent,
         UserSettingsPointer pConfig,
         TrackCollection *pTrackCollection,
-        LibraryExportModel &model) :
+        QSharedPointer<LibraryExportModel> pModel) :
     QDialog(parent),
     m_pConfig{pConfig},
     m_pTrackCollection{pTrackCollection},
-    m_model{model}
+    m_pModel{pModel}
 {
-    this->wholeLibraryRadio_ = new QRadioButton(tr("Entire music library"));
-    this->cratesRadio_ = new QRadioButton(tr("Selected crates"));
-    this->cratesList_ = new QListWidget();
-    this->cratesList_->setSelectionMode(QListWidget::ExtendedSelection);
+    m_pWholeLibraryRadio_ = new QRadioButton(tr("Entire music library"));
+    m_pCratesRadio = new QRadioButton(tr("Selected crates"));
+    m_pCratesList = new QListWidget();
+    m_pCratesList->setSelectionMode(QListWidget::ExtendedSelection);
 
-    this->connect(
-            this->wholeLibraryRadio_, &QRadioButton::clicked,
+    connect(
+            m_pWholeLibraryRadio_, &QRadioButton::clicked,
             this, &DlgLibraryExport::exportWholeLibrarySelected);
-    this->connect(
-            this->cratesRadio_, &QRadioButton::clicked,
+    connect(
+            m_pCratesRadio, &QRadioButton::clicked,
             this, &DlgLibraryExport::exportSelectedCratedSelected);
 
-    this->connect(
-            this->cratesList_, &QListWidget::itemSelectionChanged,
+    connect(
+            m_pCratesList, &QListWidget::itemSelectionChanged,
             this, &DlgLibraryExport::crateSelectionChanged);
 
     auto *formLayout = new QFormLayout();
-    this->exportDirTextField_ = new QLineEdit();
-    this->exportDirTextField_->setReadOnly(true);
-    this->engineLibraryDirTextField_ = new QLineEdit();
-    this->engineLibraryDirTextField_->setReadOnly(true);
-    this->musicFilesDirTextField_ = new QLineEdit();
-    this->musicFilesDirTextField_->setReadOnly(true);
+    m_pExportDirTextField = new QLineEdit();
+    m_pExportDirTextField->setReadOnly(true);
+    m_pEngineLibraryDirTextField = new QLineEdit();
+    m_pEngineLibraryDirTextField->setReadOnly(true);
+    m_pMusicFilesDirTextField = new QLineEdit();
+    m_pMusicFilesDirTextField->setReadOnly(true);
     auto *trackAnalysisNoteField = new QLabel(tr(
                 "Note: all affected music files will be scheduled for "
                 "analysis before they can be exported.  This can take some "
@@ -45,22 +45,22 @@ DlgLibraryExport::DlgLibraryExport(
     trackAnalysisNoteField->setWordWrap(true);
     auto *exportDirBrowseButton = new QPushButton(tr("Browse"));
     auto *exportDirLayout = new QHBoxLayout();
-    exportDirLayout->addWidget(this->exportDirTextField_);
+    exportDirLayout->addWidget(m_pExportDirTextField);
     exportDirLayout->addWidget(exportDirBrowseButton);
-    this->connect(
+    connect(
             exportDirBrowseButton, &QPushButton::clicked,
             this, &DlgLibraryExport::browseExportDirectory);
     formLayout->addRow(tr("Base export directory"), exportDirLayout);
-    formLayout->addRow(tr("Engine Library export directory"), this->engineLibraryDirTextField_);
-    formLayout->addRow(tr("Copy music files to"), this->musicFilesDirTextField_);
+    formLayout->addRow(tr("Engine Library export directory"), m_pEngineLibraryDirTextField);
+    formLayout->addRow(tr("Copy music files to"), m_pMusicFilesDirTextField);
     formLayout->addRow(trackAnalysisNoteField);
 
     auto *buttonBarLayout = new QHBoxLayout();
     auto *exportButton = new QPushButton(tr("Export"));
     exportButton->setDefault(true);
     auto *cancelButton = new QPushButton(tr("Cancel"));
-    this->connect(exportButton, &QPushButton::clicked, this, &DlgLibraryExport::exportRequested);
-    this->connect(cancelButton, &QPushButton::clicked, this, &QDialog::reject);
+    connect(exportButton, &QPushButton::clicked, this, &DlgLibraryExport::exportRequested);
+    connect(cancelButton, &QPushButton::clicked, this, &QDialog::reject);
     buttonBarLayout->addStretch(1);
     buttonBarLayout->addWidget(exportButton);
     buttonBarLayout->addWidget(cancelButton);
@@ -68,27 +68,27 @@ DlgLibraryExport::DlgLibraryExport(
     auto *layout = new QGridLayout();
     layout->setColumnStretch(0, 1);
     layout->setColumnStretch(1, 2);
-    layout->addWidget(this->wholeLibraryRadio_, 0, 0);
-    layout->addWidget(this->cratesRadio_, 1, 0);
-    layout->addWidget(this->cratesList_, 2, 0);
+    layout->addWidget(m_pWholeLibraryRadio_, 0, 0);
+    layout->addWidget(m_pCratesRadio, 1, 0);
+    layout->addWidget(m_pCratesList, 2, 0);
     layout->addLayout(formLayout, 0, 1, 3, 1);
     layout->addLayout(buttonBarLayout, 3, 0, 1, 2);
 
-    this->setLayout(layout);
-    this->setWindowTitle(tr("Export Library"));
+    setLayout(layout);
+    setWindowTitle(tr("Export Library"));
     reset();
 }
 
 void DlgLibraryExport::reset() {
     // Reset the model
-    m_model.clear();
+    m_pModel->clear();
     
-    this->wholeLibraryRadio_->setChecked(true);
-    this->exportWholeLibrarySelected();
+    m_pWholeLibraryRadio_->setChecked(true);
+    exportWholeLibrarySelected();
 
     // Populate list of crates.
     auto crates = m_pTrackCollection->crates().selectCrates();
-    this->cratesList_->clear();
+    m_pCratesList->clear();
     Crate crate;
     while (crates.populateNext(&crate))
     {
@@ -96,34 +96,34 @@ void DlgLibraryExport::reset() {
         QVariant variant;
         variant.setValue(crate.getId().value());
         item->setData(Qt::UserRole, variant);
-        this->cratesList_->addItem(item);
+        m_pCratesList->addItem(item);
     }
 
-    this->exportDirTextField_->clear();
-    this->engineLibraryDirTextField_->clear();
-    this->musicFilesDirTextField_->clear();
+    m_pExportDirTextField->clear();
+    m_pEngineLibraryDirTextField->clear();
+    m_pMusicFilesDirTextField->clear();
 }
 
 void DlgLibraryExport::exportWholeLibrarySelected()
 {
-    this->cratesList_->setEnabled(false);
-    m_model.exportEntireMusicLibrary = true;
+    m_pCratesList->setEnabled(false);
+    m_pModel->exportEntireMusicLibrary = true;
 }
 
 void DlgLibraryExport::exportSelectedCratedSelected()
 {
-    this->cratesList_->setEnabled(true);
-    m_model.exportEntireMusicLibrary = false;
+    m_pCratesList->setEnabled(true);
+    m_pModel->exportEntireMusicLibrary = false;
 }
 
 void DlgLibraryExport::crateSelectionChanged()
 {
-    m_model.selectedCrates.clear();
-    for (auto *item : this->cratesList_->selectedItems())
+    m_pModel->selectedCrates.clear();
+    for (auto *item : m_pCratesList->selectedItems())
     {
         QVariant variant = item->data(Qt::UserRole);
         CrateId id{variant.value<int>()};
-        m_model.selectedCrates.insert(id);
+        m_pModel->selectedCrates.append(id);
     }
 }
 
@@ -141,18 +141,18 @@ void DlgLibraryExport::browseExportDirectory()
                    ConfigValue(baseExportDirectoryStr));
 
     QDir baseExportDirectory{baseExportDirectoryStr};
-    m_model.engineLibraryDir = baseExportDirectory.filePath(engineLibraryDirName);
-    m_model.musicFilesDir = baseExportDirectory.filePath(mixxxExportDirName);
+    m_pModel->engineLibraryDir = baseExportDirectory.filePath(engineLibraryDirName);
+    m_pModel->musicFilesDir = baseExportDirectory.filePath(mixxxExportDirName);
 
-    this->exportDirTextField_->setText(baseExportDirectoryStr);
-    this->engineLibraryDirTextField_->setText(m_model.engineLibraryDir);
-    this->musicFilesDirTextField_->setText(m_model.musicFilesDir);
+    m_pExportDirTextField->setText(baseExportDirectoryStr);
+    m_pEngineLibraryDirTextField->setText(m_pModel->engineLibraryDir);
+    m_pMusicFilesDirTextField->setText(m_pModel->musicFilesDir);
 }
 
 void DlgLibraryExport::exportRequested()
 {
     // Check a base export directory has been chosen
-    if (this->exportDirTextField_->text().isEmpty())
+    if (m_pExportDirTextField->text().isEmpty())
     {
 		QMessageBox::information(
 				this,

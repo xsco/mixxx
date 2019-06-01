@@ -5,6 +5,8 @@
 #include <QScopedPointer>
 
 #include "preferences/usersettings.h"
+#include "library/analysisfeature.h"
+#include "library/trackcollection.h"
 #include "library/export/dlglibraryexport.h"
 #include "library/export/libraryexportworker.h"
 
@@ -17,15 +19,22 @@ public:
     LibraryExporter(
             QWidget *parent,
             UserSettingsPointer pConfig,
-            TrackCollection *pTrackCollection);
+            TrackCollection *pTrackCollection,
+            AnalysisFeature *pAnalysisFeature);
 
     virtual ~LibraryExporter() { }
 
 public slots:
     void requestExport();
 
+private slots:
+    void startExport();
+
 private:
-    LibraryExportWorker *m_pWorker;
+    QSharedPointer<LibraryExportModel> m_pModel;
+    TrackCollection *m_pTrackCollection;
+    AnalysisFeature *m_pAnalysisFeature;
+
     DlgLibraryExport *m_pDialog;
 };
 

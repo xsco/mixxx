@@ -5,7 +5,6 @@
 #include <QFileInfo>
 #include <QDesktopServices>
 #include <QMessageBox>
-#include <QProgressDialog>
 
 #include <djinterop/enginelibrary.hpp>
 
@@ -61,30 +60,49 @@ static el::musical_key convertKey(mixxx::track::io::key::ChromaticKey key)
 	return keyMap[key];
 }
 
+LibraryExportWorker::~LibraryExportWorker() {
+    qInfo() << "Library export worker now being cleaned up...";
+}
+
 void LibraryExportWorker::startExport() {
+    // Only permit one export to be active at any given time.
+    if (m_exportActive) {
+    	QMessageBox::information(
+    			dynamic_cast<QWidget *>(parent()),
+    			tr("Export Already Active"),
+    			tr("There is already a active export taking place.  Please "
+                   "wait for this to finish, or cancel the existing export."),
+    			QMessageBox::Ok,
+    			QMessageBox::Ok);
+        return;
+    }
 
-    // TODO - rework to be modeless
+    m_exportActive = true;
 
-    qInfo() << "EL directory: " << m_model.engineLibraryDir;
-    qInfo() << "Music export directory: " << m_model.musicFilesDir;
-    if (m_model.exportEntireMusicLibrary) {
+    qInfo() << "EL directory: " << m_pModel->engineLibraryDir;
+    qInfo() << "Music export directory: " << m_pModel->musicFilesDir;
+    if (m_pModel->exportEntireMusicLibrary) {
         qInfo() << "Exporting ENTIRE music library...";
+        m_trackIds = GetAllTrackIds();
+        m_crateIds = QList<CrateId>::fromSet(
+                m_pTrackCollection->crates().collectCrateIdsOfTracks(m_trackIds));
     }
     else {
         qInfo() << "Exporting selected crates...";
+        m_trackIds = GetTracksIdsInCrates(m_pModel->selectedCrates);
+        m_crateIds = m_pModel->selectedCrates;
     }
 
-    /*
     // Check for presence of any existing database.  If there is already one,
     // prompt for whether to merge into it or not.
-    el::database db{m_model.engineLibraryDir.toStdString()};
+    el::database db{m_pModel->engineLibraryDir.toStdString()};
     if (db.exists())
     {
     	int ret = QMessageBox::question(
-    			m_parent,
+    			dynamic_cast<QWidget *>(parent()),
 				tr("Merge Into Existing Library?"),
 				tr("There is already an existing library in directory ") +
-				elDirStr +
+				m_pModel->engineLibraryDir +
 				tr("\nIf you proceed, the Mixxx library will be merged into "
 				   "this existing library.  Do you want to merge into the "
 				   "the existing library?"),
@@ -95,22 +113,80 @@ void LibraryExportWorker::startExport() {
     		return;
     	}
     }
-    else
+
+    // Max progress count = no. crates + no. tracks + 2 (start & finish actions)
+    qInfo() << "Num tracks =" << m_trackIds.count();
+    qInfo() << "Num crates =" << m_crateIds.count();
+    int maxSteps = m_trackIds.count() + m_crateIds.count() + 2;
+    m_pProgress.reset(new QProgressDialog{
+        "Getting ready to export...",
+            "Cancel",
+            0,
+            maxSteps,
+            dynamic_cast<QWidget *>(parent())});
+    connect(m_pProgress.data(), SIGNAL(canceled()), this, SLOT(cancel()));
+    m_pProgress->setWindowTitle(tr("Export Library"));
+    m_pProgress->setWindowModality(Qt::WindowModal);
+
+    if (!db.exists())
     {
     	// Create new database.
-    	qInfo() << "Creating new empty database in " << elDirStr;
-    	db = el::create_database(elDirStr.toStdString(), el::version_1_7_1);
+    	qInfo() << "Creating new empty database in" << m_pModel->engineLibraryDir;
+        m_pProgress->setLabelText(tr("Creating database..."));
+    	db = el::create_database(
+                m_pModel->engineLibraryDir.toStdString(), el::version_1_7_1);
     }
 
+    // The LibraryExporter should connect signals/slots:
+    // * Track analysis complete -> LEW.exportTrack()
+    // * Crate export request -> LEW.exportCurrentCrate()
+    // * Export finish request -> LEW.finishExport()
+    //
+    // Approx operation:
+    // * LEW.startExport() begins export
+    // * LEW.startExport() emits first track analysis request
+    // * LEW.exportTrack() exports one track at a time
+    // * LEW.exportTrack() emits further track analysis requests
+    // * LEW.exportTrack() emits crate export request after all tracks done
+    // * LEW.exportCurrentCrate() exports one crate at a time
+    // * LEW.exportCurrentCrate() emits further crate export requests
+    // * LEW.exportCurrentCrate() emits export finish request after all crates done
+    // * LEW.finishExport() finishes up and emits exportFinished() signal!
+    //
+    // Suggestions for track analysis:
+    // * Slot to analyse tracks: AnalysisFeature.analyzeTracks(const QList<int> &)
+    // * Signal to listen for:   (none yet)
+    //           perhaps create: AnalysisFeature.trackAnalyzed(TrackPointer) ??
+    // (AnalysisFeature available on Library class)
+    //
+    // * Slot to call to start:  AnalyzerQueue.slotAnalyzeTrack(TrackPointer)
+    // * Signal to listen for:   AnalyzerQueue.trackDone(TrackPointer)
+    //
+    // How does exportTrack() / exportCurrentCrate() know which one to do next?
+    // The trackDone() signal includes a pointer to the track that has just
+    // been analysed.  Safe to assume that analysis is processed sequentially?
+    // 
+    // The hash from Mixxx track id to EL id will need to be locked using a
+    // QMutexLocker before any new track id is added, as we assume that track
+    // callbacks could happen in parallel.  Same for updating progress dialog?
+
+
+    /*
+    qInfo() << "Scheduling" << trackIds.count() << "tracks for analysis...";
+    if (trackIds.isEmpty()) {
+        emit(m_pAnalysisFeature->analyzeTracks(trackIds));
+    }
+    */
+
+    // TODO - temporary
+    emit exportCurrentTrack(nullptr);
+
+
+    /*
     // Create the music export directory, if it doesn't already exist.
     parentDir.mkpath(mixxxExportDirName);
     QDir exDir{exDirStr};
 
-    // Obtain a list of all track pointers across all directories.
-    QList<TrackId> trackIds;
-    auto dirs = m_pTrackCollection->getDirectoryDAO().getDirs();
-    for (auto iter = dirs.cbegin(); iter != dirs.cend(); ++iter)
-    	trackIds.append(m_pTrackCollection->getTrackDAO().getTrackIds(*iter));
     auto numTracks = trackIds.size();
 
     // Keep a mapping from Mixxx track id to EL track id
@@ -329,3 +405,111 @@ void LibraryExportWorker::startExport() {
 			QMessageBox::Ok);
     */
 }
+
+void LibraryExportWorker::exportCurrentTrack(TrackPointer track) {
+    if (!m_exportActive) {
+        return;
+    }
+
+    // Check that the track pointer matches the current track.  If it doesn't,
+    // perhaps another track that we're not interested in has been scheduled
+    // for analysis by another operation.
+    auto trackId = m_trackIds[m_currTrackIndex];
+    // TODO - reinstate below check once track pointers are valid
+    /*
+    if (track->getId() != trackId) {
+        qInfo() << "Track" << track->getId ()
+            << "completed analysis, but this wasn't the track the export "
+            "process was expecting (perhaps it was scheduled by another "
+            "operation) - will ignore";
+        return;
+    }
+    */
+
+    m_pProgress->setLabelText(tr("Exporting track..."));
+    qInfo() << "Would export track" << (m_currTrackIndex + 1) << "/" << m_trackIds.count() << "...";
+
+    // TODO - export track
+    qInfo() << "Track id =" << trackId;
+
+    // Update progress.
+    m_currTrackIndex++;
+    m_pProgress->setValue(m_pProgress->value() + 1);
+    if (m_currTrackIndex == m_trackIds.count()) {
+        // Move onto crates.
+        emit exportCurrentCrate();
+    }
+
+    // TODO - schedule next track for analysis.
+    emit exportCurrentTrack(nullptr);
+}
+
+void LibraryExportWorker::exportCurrentCrate() {
+    if (!m_exportActive) {
+        return;
+    }
+
+    m_pProgress->setLabelText(tr("Exporting crate..."));
+    qInfo() << "Would export crate" << (m_currCrateIndex + 1) << "/" << m_crateIds.count() << "...";
+
+    // TODO - export crate
+    auto crateId = m_crateIds[m_currCrateIndex];
+    qInfo() << "Crate id =" << crateId;
+
+    // Update progress.
+    m_currCrateIndex++;
+    m_pProgress->setValue(m_pProgress->value() + 1);
+    if (m_currCrateIndex == m_crateIds.count()) {
+        // All finished
+        emit finishExport();
+    }
+
+    // Schedule next crate.
+    emit exportCurrentCrate();
+}
+
+void LibraryExportWorker::finishExport() {
+    m_pProgress->setValue(m_pProgress->maximum());
+    m_exportActive = false;
+    QMessageBox::information(
+			dynamic_cast<QWidget *>(parent()),
+			tr("Export Completed"),
+			tr("The Mixxx library has been successfully exported."),
+			QMessageBox::Ok,
+			QMessageBox::Ok);
+    emit exportFinished();
+}
+
+void LibraryExportWorker::cancel() {
+    m_exportActive = false;
+	QMessageBox::information(
+			dynamic_cast<QWidget *>(parent()),
+			tr("Export Aborted"),
+			tr("Library export was aborted.  The Mixxx library has "
+			   "only been partially exported."),
+			QMessageBox::Ok,
+			QMessageBox::Ok);
+}
+
+// Get all track ids across the entire music library.
+QList<TrackId> LibraryExportWorker::GetAllTrackIds() {
+    // Obtain a list of all track ids across all directories.
+    QList<TrackId> trackIds;
+    auto dirs = m_pTrackCollection->getDirectoryDAO().getDirs();
+    for (auto iter = dirs.cbegin(); iter != dirs.cend(); ++iter)
+    	trackIds.append(m_pTrackCollection->getTrackDAO().getTrackIds(*iter));
+    return trackIds;
+}
+
+// Get track ids in a provided list of crates.
+QList<TrackId> LibraryExportWorker::GetTracksIdsInCrates(const QList<CrateId> &crateIds) {
+    QList<TrackId> trackIds;
+    for (auto iter = crateIds.cbegin(); iter != crateIds.end(); ++iter) {
+        auto result = m_pTrackCollection->crates().selectCrateTracksSorted(*iter);
+        while (result.next()) {
+            trackIds.append(result.trackId());
+        }
+    }
+    return trackIds;
+}
+

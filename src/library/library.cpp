@@ -442,7 +442,8 @@ void Library::setEditMedatataSelectedClick(bool enabled) {
 LibraryExporter *Library::makeLibraryExporter(QWidget *parent) {
     // New object is expected to be owned (and lifecycle-managed)
     // by the supplied parent widget.
-    return new LibraryExporter(parent, m_pConfig, m_pTrackCollection);
+    return new LibraryExporter(
+            parent, m_pConfig, m_pTrackCollection, m_pAnalysisFeature);
 }
 
 void Library::saveCachedTrack(Track* pTrack) noexcept {
