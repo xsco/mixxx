@@ -5,7 +5,11 @@
 #include <QString>
 #include "library/crate/crateid.h"
 
+const QString EngineLibraryDirName = "Engine Library";
+const QString MixxxExportDirName = "MixxxExport";
+
 struct LibraryExportModel {
+
     QString engineLibraryDir;
     QString musicFilesDir;
     bool exportEntireMusicLibrary;

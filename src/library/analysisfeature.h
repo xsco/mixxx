@@ -16,6 +16,7 @@
 #include "library/dlganalysis.h"
 #include "library/treeitemmodel.h"
 #include "preferences/usersettings.h"
+#include "track/track.h"
 #include "util/db/dbconnectionpool.h"
 
 class Library;
@@ -44,14 +45,15 @@ class AnalysisFeature : public LibraryFeature {
   signals:
     void analysisActive(bool bActive);
     void trackAnalysisStarted(int size);
+    void trackFinished(TrackPointer pTrack);
 
   public slots:
     void activate();
     void analyzeTracks(QList<TrackId> trackIds);
+    void stopAnalysis();
 
   private slots:
     void slotProgressUpdate(int num_left);
-    void stopAnalysis();
     void cleanupAnalyzer();
 
   private:

@@ -1,9 +1,8 @@
 #ifndef LIBRARYEXPORTER_H
 #define LIBRARYEXPORTER_H
 
+#include <memory>
 #include <QString>
-#include <QScopedPointer>
-
 #include "preferences/usersettings.h"
 #include "library/analysisfeature.h"
 #include "library/trackcollection.h"
@@ -31,7 +30,7 @@ private slots:
     void startExport();
 
 private:
-    QSharedPointer<LibraryExportModel> m_pModel;
+    std::shared_ptr<LibraryExportModel> m_pModel;
     TrackCollection *m_pTrackCollection;
     AnalysisFeature *m_pAnalysisFeature;
 

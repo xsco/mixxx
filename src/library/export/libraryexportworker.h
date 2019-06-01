@@ -1,9 +1,12 @@
 #ifndef LIBRARYEXPORTWORKER_H
 #define LIBRARYEXPORTWORKER_H
 
+#include <memory>
 #include <QObject>
 #include <QList>
 #include <QProgressDialog>
+#include <QTemporaryDir>
+#include <djinterop/enginelibrary.hpp>
 #include "library/analysisfeature.h"
 #include "library/trackcollection.h"
 #include "library/crate/crateid.h"
@@ -17,47 +20,52 @@ class LibraryExportWorker : public QObject {
 public:
     LibraryExportWorker(
     		QWidget *parent,
-            QSharedPointer<LibraryExportModel> pModel,
+            std::shared_ptr<LibraryExportModel> pModel,
 			TrackCollection *pTrackCollection,
-            AnalysisFeature *pAnalysisFeature) :
-        QObject{parent},
-        m_pModel{pModel},
-		m_pTrackCollection{pTrackCollection},
-        m_pAnalysisFeature{pAnalysisFeature},
-        m_exportActive{false},
-        m_currTrackIndex{0},
-        m_currCrateIndex{0}
-    {
-    }
+            AnalysisFeature *pAnalysisFeature);
 
     virtual ~LibraryExportWorker();
 
 signals:
     void exportFinished();
+    void exportCancelled();
+    void exportFailed();
+
+    void readyForSetupElDatabase(QPrivateSignal);
+    void readyForExportCurrentCrate(QPrivateSignal);
 
 public slots:
     void startExport();
 
 private slots:
-    void exportCurrentTrack(TrackPointer track);
+    void setupElDatabase();
+    void exportTrack(TrackPointer pTrack);
     void exportCurrentCrate();
     void finishExport();
     void cancel();
+    void fail();
 
 private:
+    QString copyFile(TrackPointer pTrack);
+    void writeMetadata(TrackPointer pTrack, const QString &dstFilename);
     QList<TrackId> GetAllTrackIds();
+    QList<TrackId> GetTracksIdsInCrate(CrateId crateId);
     QList<TrackId> GetTracksIdsInCrates(const QList<CrateId> &crateIds);
 
-    QSharedPointer<LibraryExportModel> m_pModel;
+    std::shared_ptr<LibraryExportModel> m_pModel;
     TrackCollection *m_pTrackCollection;
     AnalysisFeature *m_pAnalysisFeature;
 
-    QScopedPointer<QProgressDialog> m_pProgress;
+    std::unique_ptr<QProgressDialog> m_pProgress;
     bool m_exportActive;
-    int m_currTrackIndex;
+    int m_numTracksDone;
     int m_currCrateIndex;
     QList<TrackId> m_trackIds;
     QList<CrateId> m_crateIds;
+
+    QTemporaryDir m_tempEngineLibraryDir;
+    std::unique_ptr<djinterop::enginelibrary::database> m_pElDb;
+    QHash<int, int> m_trackIdToElId;
 };
 
 #endif  // LIBRARYEXPORTWORKER_H

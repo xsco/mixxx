@@ -31,6 +31,8 @@ void LibraryExporter::startExport() {
         m_pTrackCollection,
         m_pAnalysisFeature};
     connect(worker, SIGNAL(exportFinished()), worker, SLOT(deleteLater()));
+    connect(worker, SIGNAL(exportCancelled()), worker, SLOT(deleteLater()));
+    connect(worker, SIGNAL(exportFailed()), worker, SLOT(deleteLater()));
 
     // Start export by calling slot directly.
     worker->startExport();

@@ -1,14 +1,11 @@
 #include "library/export/dlglibraryexport.h"
 #include "library/trackcollection.h"
 
-const auto engineLibraryDirName = "Engine Library";
-const auto mixxxExportDirName = "MixxxExport";
-
 DlgLibraryExport::DlgLibraryExport(
         QWidget *parent,
         UserSettingsPointer pConfig,
         TrackCollection *pTrackCollection,
-        QSharedPointer<LibraryExportModel> pModel) :
+        std::shared_ptr<LibraryExportModel> pModel) :
     QDialog(parent),
     m_pConfig{pConfig},
     m_pTrackCollection{pTrackCollection},
@@ -141,8 +138,8 @@ void DlgLibraryExport::browseExportDirectory()
                    ConfigValue(baseExportDirectoryStr));
 
     QDir baseExportDirectory{baseExportDirectoryStr};
-    m_pModel->engineLibraryDir = baseExportDirectory.filePath(engineLibraryDirName);
-    m_pModel->musicFilesDir = baseExportDirectory.filePath(mixxxExportDirName);
+    m_pModel->engineLibraryDir = baseExportDirectory.filePath(EngineLibraryDirName);
+    m_pModel->musicFilesDir = baseExportDirectory.filePath(MixxxExportDirName);
 
     m_pExportDirTextField->setText(baseExportDirectoryStr);
     m_pEngineLibraryDirTextField->setText(m_pModel->engineLibraryDir);

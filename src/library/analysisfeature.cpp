@@ -147,6 +147,13 @@ void AnalysisFeature::analyzeTracks(QList<TrackId> trackIds) {
         connect(m_pAnalyzerQueue, SIGNAL(trackFinished(int)),
                 m_pAnalysisView, SLOT(trackAnalysisFinished(int)));
 
+        // Inform when a track is finished, whether it actually needed analysis
+        // or not.
+        connect(m_pAnalyzerQueue, SIGNAL(trackDone(TrackPointer)),
+                this, SIGNAL(trackFinished(TrackPointer)));
+        connect(m_pAnalyzerQueue, SIGNAL(trackNotAnalyzed(TrackPointer)),
+                this, SIGNAL(trackFinished(TrackPointer)));
+
         connect(m_pAnalyzerQueue, SIGNAL(queueEmpty()),
                 this, SLOT(cleanupAnalyzer()));
         emit(analysisActive(true));

@@ -388,6 +388,7 @@ void AnalyzerQueue::execThread() {
                 emitUpdateProgress(nextTrack, 1000); // 100%
             }
         } else {
+            emit(trackNotAnalyzed(nextTrack));
             emitUpdateProgress(nextTrack, 1000); // 100%
             kLogger.debug() << "Skipping track analysis because no analyzer initialized.";
         }

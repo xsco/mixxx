@@ -43,6 +43,7 @@ class AnalyzerQueue : public QThread {
   signals:
     void trackProgress(int progress);
     void trackDone(TrackPointer track);
+    void trackNotAnalyzed(TrackPointer track);
     void trackFinished(int size);
     // Signals from AnalyzerQueue Thread:
     void queueEmpty();
