@@ -151,13 +151,13 @@ void DlgLibraryExport::exportRequested()
     // Check a base export directory has been chosen
     if (m_pExportDirTextField->text().isEmpty())
     {
-		QMessageBox::information(
-				this,
-				tr("No Export Directory Chosen"),
-				tr("No export directory was chosen.  Please choose a directory "
+        QMessageBox::information(
+                this,
+                tr("No Export Directory Chosen"),
+                tr("No export directory was chosen.  Please choose a directory "
                    "in order to export the music library."),
-				QMessageBox::Ok,
-				QMessageBox::Ok);
+                QMessageBox::Ok,
+                QMessageBox::Ok);
         return;
     }
 

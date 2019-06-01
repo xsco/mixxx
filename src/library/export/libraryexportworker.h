@@ -19,9 +19,9 @@ class LibraryExportWorker : public QObject {
     Q_OBJECT
 public:
     LibraryExportWorker(
-    		QWidget *parent,
+            QWidget *parent,
             std::shared_ptr<LibraryExportModel> pModel,
-			TrackCollection *pTrackCollection,
+            TrackCollection *pTrackCollection,
             AnalysisFeature *pAnalysisFeature);
 
     virtual ~LibraryExportWorker();

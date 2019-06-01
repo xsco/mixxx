@@ -62,35 +62,35 @@ static void copyFilesInDir(const QString &srcDir, const QString &dstDir) {
 }
 
 static el::track createOrLoadTrack(
-		const el::database &db, const QString &relPath) {
-	auto ids = el::find_track_ids_by_path(db, relPath.toStdString());
-	if (ids.empty())
-		return el::track{};
-	else
-		return el::track{db, ids[0]};
+        const el::database &db, const QString &relPath) {
+    auto ids = el::find_track_ids_by_path(db, relPath.toStdString());
+    if (ids.empty())
+        return el::track{};
+    else
+        return el::track{db, ids[0]};
 }
 
 static el::crate createOrLoadCrate(
-		const el::database &db, const QString &name) {
+        const el::database &db, const QString &name) {
     int id;
     if (el::find_crate_by_name(db, name.toStdString(), id))
         return el::crate{db, id};
     else
-		return el::crate{};
+        return el::crate{};
 }
 
 static el::musical_key convertKey(mixxx::track::io::key::ChromaticKey key) {
-	return keyMap[key];
+    return keyMap[key];
 }
 
 LibraryExportWorker::LibraryExportWorker(
-		QWidget *parent,
+        QWidget *parent,
         std::shared_ptr<LibraryExportModel> pModel,
-		TrackCollection *pTrackCollection,
+        TrackCollection *pTrackCollection,
         AnalysisFeature *pAnalysisFeature) :
     QObject{parent},
     m_pModel{pModel},
-	m_pTrackCollection{pTrackCollection},
+    m_pTrackCollection{pTrackCollection},
     m_pAnalysisFeature{pAnalysisFeature},
     m_exportActive{false},
     m_numTracksDone{0},
@@ -109,13 +109,13 @@ LibraryExportWorker::~LibraryExportWorker() {
 void LibraryExportWorker::startExport() {
     // Only permit one export to be active at any given time.
     if (m_exportActive) {
-    	QMessageBox::information(
-    			dynamic_cast<QWidget *>(parent()),
-    			tr("Export Already Active"),
-    			tr("There is already a active export taking place.  Please "
+        QMessageBox::information(
+                dynamic_cast<QWidget *>(parent()),
+                tr("Export Already Active"),
+                tr("There is already a active export taking place.  Please "
                    "wait for this to finish, or cancel the existing export."),
-    			QMessageBox::Ok,
-    			QMessageBox::Ok);
+                QMessageBox::Ok,
+                QMessageBox::Ok);
         return;
     }
 
@@ -134,13 +134,13 @@ void LibraryExportWorker::startExport() {
     }
 
     if (m_trackIds.isEmpty()) {
-    	QMessageBox::information(
-    			dynamic_cast<QWidget *>(parent()),
-    			tr("No tracks to export"),
-    			tr("There are no tracks to export in the selection made.  "
+        QMessageBox::information(
+                dynamic_cast<QWidget *>(parent()),
+                tr("No tracks to export"),
+                tr("There are no tracks to export in the selection made.  "
                    "Nothing will be exported."),
-    			QMessageBox::Ok,
-    			QMessageBox::Ok);
+                QMessageBox::Ok,
+                QMessageBox::Ok);
         return;
     }
 
@@ -149,20 +149,20 @@ void LibraryExportWorker::startExport() {
     m_pElDb.reset(new el::database{m_pModel->engineLibraryDir.toStdString()});
     if (m_pElDb->exists())
     {
-    	int ret = QMessageBox::question(
-    			dynamic_cast<QWidget *>(parent()),
-				tr("Merge Into Existing Library?"),
-				tr("There is already an existing library in directory ") +
-				m_pModel->engineLibraryDir +
-				tr("\nIf you proceed, the Mixxx library will be merged into "
-				   "this existing library.  Do you want to merge into the "
-				   "the existing library?"),
-				QMessageBox::Yes | QMessageBox::Cancel,
-				QMessageBox::Cancel);
-    	if (ret != QMessageBox::Yes)
-    	{
-    		return;
-    	}
+        int ret = QMessageBox::question(
+                dynamic_cast<QWidget *>(parent()),
+                tr("Merge Into Existing Library?"),
+                tr("There is already an existing library in directory ") +
+                m_pModel->engineLibraryDir +
+                tr("\nIf you proceed, the Mixxx library will be merged into "
+                   "this existing library.  Do you want to merge into the "
+                   "the existing library?"),
+                QMessageBox::Yes | QMessageBox::Cancel,
+                QMessageBox::Cancel);
+        if (ret != QMessageBox::Yes)
+        {
+            return;
+        }
     }
 
     // Max progress count = no. crates + no. tracks + 2 (start & finish actions)
@@ -189,12 +189,12 @@ void LibraryExportWorker::setupElDatabase() {
 
     if (!m_pElDb->exists())
     {
-    	// Create new database.
+        // Create new database.
         // Note that we create in temporary directory and then move over, as
         // SQLite commands appear to be slow when run directly on USB sticks.
-    	qInfo() << "Creating new empty database in" << m_pModel->engineLibraryDir;
+        qInfo() << "Creating new empty database in" << m_pModel->engineLibraryDir;
         m_pProgress->setLabelText(tr("Creating database..."));
-    	m_pElDb.reset(new el::database{std::move(el::create_database(
+        m_pElDb.reset(new el::database{std::move(el::create_database(
                 m_tempEngineLibraryDir.path().toStdString(), el::version_1_7_1))});
     }
     else {
@@ -225,8 +225,8 @@ void LibraryExportWorker::exportTrack(TrackPointer pTrack) {
         return;
     }
 
-	// Check if the file format is supported by Engine Library.
-	// Supported file formats are:
+    // Check if the file format is supported by Engine Library.
+    // Supported file formats are:
     // * MP3 32 kbit/s - 320 kbit/s + VBR
     // * M4A / AAC
     // * MP4
@@ -235,7 +235,7 @@ void LibraryExportWorker::exportTrack(TrackPointer pTrack) {
     // * AIFF 16-32 bit, 44.1k - 192k
     // * FLAC
     // * ALAC
-	// TODO - check file format using pTrack->getType()
+    // TODO - check file format using pTrack->getType()
 
     qInfo() << "Exporting" << pTrack->getTitle();
     m_pProgress->setLabelText(tr("Exporting track...") + " " + pTrack->getTitle());
@@ -256,34 +256,34 @@ void LibraryExportWorker::exportTrack(TrackPointer pTrack) {
 }
 
 QString LibraryExportWorker::copyFile(TrackPointer pTrack) {
-	// Copy music files into the Mixxx export dir, if the source file has
-	// been modified (or the destination doesn't exist).  To ensure no
-	// chance of filename clashes, and to keep things simple, we will name
-	// the destination files after the DB track identifier.
-	auto srcFileInfo = pTrack->getFileInfo();
-	QString dstFilename =
-		QString::number(pTrack->getId().value()) +
-		"." +
-		srcFileInfo.suffix();
+    // Copy music files into the Mixxx export dir, if the source file has
+    // been modified (or the destination doesn't exist).  To ensure no
+    // chance of filename clashes, and to keep things simple, we will name
+    // the destination files after the DB track identifier.
+    auto srcFileInfo = pTrack->getFileInfo();
+    QString dstFilename =
+        QString::number(pTrack->getId().value()) +
+        "." +
+        srcFileInfo.suffix();
     QDir dstDir{m_pModel->musicFilesDir};
-	auto dstFilePath = dstDir.filePath(dstFilename);
-	auto shouldCopyFile = true;
-	if (QFile::exists(dstFilePath))
-	{
-		// The destination file already exists.  Only copy if the source
-		// is newer than the file currently there.
-		QFileInfo dstFileInfo{dstFilePath};
-		shouldCopyFile = srcFileInfo.lastModified() > dstFileInfo.lastModified();
-	}
+    auto dstFilePath = dstDir.filePath(dstFilename);
+    auto shouldCopyFile = true;
+    if (QFile::exists(dstFilePath))
+    {
+        // The destination file already exists.  Only copy if the source
+        // is newer than the file currently there.
+        QFileInfo dstFileInfo{dstFilePath};
+        shouldCopyFile = srcFileInfo.lastModified() > dstFileInfo.lastModified();
+    }
 
-	if (shouldCopyFile)
-	{
+    if (shouldCopyFile)
+    {
         QString label = tr("Copying") + " " + pTrack->getTitle();
         m_pProgress->setLabelText(label);
-	    auto srcFilePath = srcFileInfo.filePath();
+        auto srcFilePath = srcFileInfo.filePath();
         qInfo() << "Copying" << srcFilePath << "to" << dstFilePath;
-		QFile::copy(srcFilePath, dstFilePath);
-	}
+        QFile::copy(srcFilePath, dstFilePath);
+    }
 
     return dstFilename;
 }
@@ -293,49 +293,49 @@ void LibraryExportWorker::writeMetadata(
     auto trackId = pTrack->getId();
     auto &db = *m_pElDb;
 
-	// Create or update a track record.
-	QString trackRelPath = "../";
-	trackRelPath = trackRelPath + MixxxExportDirName + "/" + dstFilename;
+    // Create or update a track record.
+    QString trackRelPath = "../";
+    trackRelPath = trackRelPath + MixxxExportDirName + "/" + dstFilename;
     el::track t = createOrLoadTrack(db, trackRelPath);
-	t.set_track_number(pTrack->getTrackNumber().toInt());
-	t.set_duration(std::chrono::seconds{pTrack->getDurationInt()});
-	t.set_bpm((int)pTrack->getBpm());
-	t.set_year(pTrack->getYear().toInt());
-	t.set_title(pTrack->getTitle().toStdString());
-	t.set_artist(pTrack->getArtist().toStdString());
-	t.set_album(pTrack->getAlbum().toStdString());
-	t.set_genre(pTrack->getGenre().toStdString());
-	t.set_comment(pTrack->getComment().toStdString());
-	t.set_composer(pTrack->getComposer().toStdString());
-	auto key = pTrack->getKey();
+    t.set_track_number(pTrack->getTrackNumber().toInt());
+    t.set_duration(std::chrono::seconds{pTrack->getDurationInt()});
+    t.set_bpm((int)pTrack->getBpm());
+    t.set_year(pTrack->getYear().toInt());
+    t.set_title(pTrack->getTitle().toStdString());
+    t.set_artist(pTrack->getArtist().toStdString());
+    t.set_album(pTrack->getAlbum().toStdString());
+    t.set_genre(pTrack->getGenre().toStdString());
+    t.set_comment(pTrack->getComment().toStdString());
+    t.set_composer(pTrack->getComposer().toStdString());
+    auto key = pTrack->getKey();
     el::musical_key elKey = convertKey(key);
-	if (key != mixxx::track::io::key::INVALID)
-		t.set_key(elKey);
-	t.set_path(trackRelPath.toStdString());
-	t.set_filename(dstFilename.toStdString());
-	t.set_file_extension(pTrack->getFileInfo().suffix().toStdString());
-	std::chrono::system_clock::time_point lastModifiedAt{
-		std::chrono::milliseconds{
-			pTrack->getFileModifiedTime().toMSecsSinceEpoch()}};
-	t.set_last_modified_at(lastModifiedAt);
-	t.set_bitrate(pTrack->getBitrate());
-	t.set_ever_played(pTrack->getTimesPlayed() > 0);
-	t.set_imported(false); // Not imported from another EL database
-	t.set_no_album_art(); // Album art is not currently supported
-	t.save(db);
+    if (key != mixxx::track::io::key::INVALID)
+        t.set_key(elKey);
+    t.set_path(trackRelPath.toStdString());
+    t.set_filename(dstFilename.toStdString());
+    t.set_file_extension(pTrack->getFileInfo().suffix().toStdString());
+    std::chrono::system_clock::time_point lastModifiedAt{
+        std::chrono::milliseconds{
+            pTrack->getFileModifiedTime().toMSecsSinceEpoch()}};
+    t.set_last_modified_at(lastModifiedAt);
+    t.set_bitrate(pTrack->getBitrate());
+    t.set_ever_played(pTrack->getTimesPlayed() > 0);
+    t.set_imported(false); // Not imported from another EL database
+    t.set_no_album_art(); // Album art is not currently supported
+    t.save(db);
 
-	// Add to the mapping of track ids
-	m_trackIdToElId[trackId.value()] = t.id();
+    // Add to the mapping of track ids
+    m_trackIdToElId[trackId.value()] = t.id();
 
-	// Write the performance data record
-	bool perfDataExists = el::performance_data::exists(db, t.id());
-	el::performance_data p = perfDataExists
-			? el::performance_data{db, t.id()}
-			: el::performance_data{t.id()};
+    // Write the performance data record
+    bool perfDataExists = el::performance_data::exists(db, t.id());
+    el::performance_data p = perfDataExists
+            ? el::performance_data{db, t.id()}
+            : el::performance_data{t.id()};
 
     // Frames used interchangeably with "samples" here.
     double totalFrames = pTrack->getDuration() * pTrack->getSampleRate();
-	p.set_sample_rate(pTrack->getSampleRate());
+    p.set_sample_rate(pTrack->getSampleRate());
     p.set_total_samples(totalFrames);
     p.set_key(elKey);
     //p.set_average_loudness(...); TODO - set average loudness
@@ -343,7 +343,7 @@ void LibraryExportWorker::writeMetadata(
     // Fill in beat grid.  For now, assume a constant average BPM across
     // the whole track.  Note that points in the track are specified as
     // "play positions", which are twice the sample offset.
-	BeatsPointer beats = pTrack->getBeats();
+    BeatsPointer beats = pTrack->getBeats();
     if (beats != nullptr) {
         double firstBeatPlayPos = beats->findNextBeat(0);
         double lastBeatPlayPos = beats->findPrevBeat(totalFrames * 2);
@@ -364,7 +364,7 @@ void LibraryExportWorker::writeMetadata(
     double cuePlayPos = pTrack->getCuePoint();
     p.set_default_main_cue_sample_offset(cuePlayPos / 2);
     p.set_adjusted_main_cue_sample_offset(cuePlayPos / 2);
-	auto cues = pTrack->getCuePoints();
+    auto cues = pTrack->getCuePoints();
 
     std::vector<el::track_loop> elLoops;
     // TODO - fill in loops
@@ -425,7 +425,7 @@ void LibraryExportWorker::writeMetadata(
                 std::end(elHighResWaveform));
     }
 
-	p.save(db);
+    p.save(db);
 }
 
 void LibraryExportWorker::exportCurrentCrate() {
@@ -470,35 +470,35 @@ void LibraryExportWorker::finishExport() {
     m_pProgress->setValue(m_pProgress->maximum());
     m_exportActive = false;
     QMessageBox::information(
-			dynamic_cast<QWidget *>(parent()),
-			tr("Export Completed"),
-			tr("The Mixxx library has been successfully exported."),
-			QMessageBox::Ok,
-			QMessageBox::Ok);
+            dynamic_cast<QWidget *>(parent()),
+            tr("Export Completed"),
+            tr("The Mixxx library has been successfully exported."),
+            QMessageBox::Ok,
+            QMessageBox::Ok);
     emit exportFinished();
 }
 
 void LibraryExportWorker::cancel() {
     m_exportActive = false;
-	QMessageBox::information(
-			dynamic_cast<QWidget *>(parent()),
-			tr("Export Aborted"),
-			tr("Library export was aborted.  The Mixxx library has "
-			   "only been partially exported."),
-			QMessageBox::Ok,
-			QMessageBox::Ok);
+    QMessageBox::information(
+            dynamic_cast<QWidget *>(parent()),
+            tr("Export Aborted"),
+            tr("Library export was aborted.  The Mixxx library has "
+               "only been partially exported."),
+            QMessageBox::Ok,
+            QMessageBox::Ok);
     emit exportCancelled();
 }
 
 void LibraryExportWorker::fail() {
     m_exportActive = false;
-	QMessageBox::information(
-			dynamic_cast<QWidget *>(parent()),
-			tr("Export Failed"),
-			tr("Library export failed.  The Mixxx library has only been "
+    QMessageBox::information(
+            dynamic_cast<QWidget *>(parent()),
+            tr("Export Failed"),
+            tr("Library export failed.  The Mixxx library has only been "
                "partially exported."),
-			QMessageBox::Ok,
-			QMessageBox::Ok);
+            QMessageBox::Ok,
+            QMessageBox::Ok);
     emit exportFailed();
 }
 
@@ -507,7 +507,7 @@ QList<TrackId> LibraryExportWorker::GetAllTrackIds() {
     QList<TrackId> trackIds;
     auto dirs = m_pTrackCollection->getDirectoryDAO().getDirs();
     for (auto iter = dirs.cbegin(); iter != dirs.cend(); ++iter)
-    	trackIds.append(m_pTrackCollection->getTrackDAO().getTrackIds(*iter));
+        trackIds.append(m_pTrackCollection->getTrackDAO().getTrackIds(*iter));
     return trackIds;
 }
 
