@@ -16,6 +16,8 @@
 #include "library/export/trackexportworker.h"
 #include "preferences/usersettings.h"
 #include "track/track.h"
+#include "util/memory.h"
+#include "util/parented_ptr.h"
 
 // A controller class for creating the export worker and UI.
 class TrackExportWizard : public QObject {
@@ -37,8 +39,8 @@ class TrackExportWizard : public QObject {
     QWidget* m_parent;
     UserSettingsPointer m_pConfig;
     QList<TrackPointer> m_tracks;
-    QScopedPointer<TrackExportDlg> m_dialog;
-    QScopedPointer<TrackExportWorker> m_worker;
+    parented_ptr<TrackExportDlg> m_dialog;
+    std::unique_ptr<TrackExportWorker> m_worker;
 };
 
 #endif // TRACKEXPORT_H

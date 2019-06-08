@@ -677,7 +677,7 @@ void MixxxMainWindow::finalize() {
     GlobalTrackCacheLocker().deactivateCache();
 
     qDebug() << t.elapsed(false).debugMillisWithUnit() << "deleting LibraryExporter";
-    delete m_pLibraryExporter;
+    m_pLibraryExporter = nullptr; // is unique_ptr
 
     // Delete the library after the view so there are no dangling pointers to
     // the data models.
@@ -1127,7 +1127,7 @@ void MixxxMainWindow::connectMenuBar() {
 
     if (m_pLibraryExporter) {
         connect(m_pMenuBar, SIGNAL(exportLibrary()),
-                m_pLibraryExporter, SLOT(requestExport()));
+                m_pLibraryExporter.get(), SLOT(requestExport()));
     }
 }
 

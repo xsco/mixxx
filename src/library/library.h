@@ -92,7 +92,7 @@ class Library: public QObject,
     void setRowHeight(int rowHeight);
     void setEditMedatataSelectedClick(bool enable);
 
-    LibraryExporter *makeLibraryExporter(QWidget *parent);
+    std::unique_ptr<LibraryExporter> makeLibraryExporter(QWidget *parent);
 
   public slots:
     void slotShowTrackModel(QAbstractItemModel* model);

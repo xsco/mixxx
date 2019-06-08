@@ -1,17 +1,18 @@
 #include "library/export/libraryexporter.h"
+
 #include <QtCore>
 
 LibraryExporter::LibraryExporter(QWidget *parent,
         UserSettingsPointer pConfig,
-        TrackCollection *pTrackCollection,
-        AnalysisFeature *pAnalysisFeature)
-        : QObject{parent},
-          m_pModel{new LibraryExportModel{}},
-          m_pTrackCollection{pTrackCollection},
-          m_pAnalysisFeature{pAnalysisFeature},
-          m_pDialog{new DlgLibraryExport{parent, pConfig, pTrackCollection, m_pModel}} {
+        TrackCollection &trackCollection,
+        AnalysisFeature &analysisFeature)
+        : QWidget{parent},
+          m_model{},
+          m_trackCollection{trackCollection},
+          m_analysisFeature{analysisFeature},
+          m_pDialog{make_parented<DlgLibraryExport>(parent, pConfig, trackCollection, m_model)} {
     m_pDialog->setHidden(true);
-    connect(m_pDialog, SIGNAL(accepted()), this, SLOT(startExport()));
+    connect(m_pDialog.get(), SIGNAL(accepted()), this, SLOT(startExport()));
 }
 
 void LibraryExporter::requestExport() {
@@ -22,12 +23,9 @@ void LibraryExporter::requestExport() {
 }
 
 void LibraryExporter::startExport() {
-    auto *worker = new LibraryExportWorker{
-            dynamic_cast<QWidget *>(parent()), m_pModel, m_pTrackCollection, m_pAnalysisFeature};
-    connect(worker, SIGNAL(exportFinished()), worker, SLOT(deleteLater()));
-    connect(worker, SIGNAL(exportCancelled()), worker, SLOT(deleteLater()));
-    connect(worker, SIGNAL(exportFailed()), worker, SLOT(deleteLater()));
+    m_pWorker =
+            make_parented<LibraryExportWorker>(this, m_model, m_trackCollection, m_analysisFeature);
 
     // Start export by calling slot directly.
-    worker->startExport();
+    m_pWorker->startExport();
 }

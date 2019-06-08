@@ -27,7 +27,7 @@ bool TrackExportWizard::selectDestinationDirectory() {
     }
     m_pConfig->set(ConfigKey("[Library]", "LastTrackCopyDirectory"), ConfigValue(destDir));
 
-    m_worker.reset(new TrackExportWorker(destDir, m_tracks));
-    m_dialog.reset(new TrackExportDlg(m_parent, m_pConfig, m_worker.data()));
+    m_worker = std::make_unique<TrackExportWorker>(destDir, m_tracks);
+    m_dialog = make_parented<TrackExportDlg>(m_parent, m_pConfig, m_worker.get());
     return true;
 }

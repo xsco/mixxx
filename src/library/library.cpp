@@ -32,6 +32,7 @@
 #include "util/db/dbconnectionpooled.h"
 #include "util/sandbox.h"
 #include "util/logger.h"
+#include "util/memory.h"
 #include "util/assert.h"
 
 #include "widget/wtracktableview.h"
@@ -468,11 +469,11 @@ void Library::setEditMedatataSelectedClick(bool enabled) {
     emit(setSelectedClick(enabled));
 }
 
-LibraryExporter *Library::makeLibraryExporter(QWidget *parent) {
+std::unique_ptr<LibraryExporter> Library::makeLibraryExporter(QWidget *parent) {
     // New object is expected to be owned (and lifecycle-managed)
     // by the supplied parent widget.
-    return new LibraryExporter(
-            parent, m_pConfig, m_pTrackCollection, m_pAnalysisFeature);
+    return std::make_unique<LibraryExporter>(
+        parent, m_pConfig, *m_pTrackCollection, *m_pAnalysisFeature);
 }
 
 void Library::saveCachedTrack(Track* pTrack) noexcept {

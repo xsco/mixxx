@@ -79,13 +79,13 @@ static el::musical_key convertKey(mixxx::track::io::key::ChromaticKey key) {
 }
 
 LibraryExportWorker::LibraryExportWorker(QWidget *parent,
-        std::shared_ptr<LibraryExportModel> pModel,
-        TrackCollection *pTrackCollection,
-        AnalysisFeature *pAnalysisFeature)
-        : QObject{parent},
-          m_pModel{pModel},
-          m_pTrackCollection{pTrackCollection},
-          m_pAnalysisFeature{pAnalysisFeature},
+        LibraryExportModel &model,
+        TrackCollection &trackCollection,
+        AnalysisFeature &analysisFeature)
+        : QWidget{parent},
+          m_model{model},
+          m_trackCollection{trackCollection},
+          m_analysisFeature{analysisFeature},
           m_exportActive{false},
           m_numTracksDone{0},
           m_currCrateIndex{0} {
@@ -106,7 +106,7 @@ LibraryExportWorker::~LibraryExportWorker() {
 void LibraryExportWorker::startExport() {
     // Only permit one export to be active at any given time.
     if (m_exportActive) {
-        QMessageBox::information(dynamic_cast<QWidget *>(parent()),
+        QMessageBox::information(this,
                 tr("Export Already Active"),
                 tr("There is already a active export taking place.  Please "
                    "wait for this to finish, or cancel the existing export."),
@@ -117,19 +117,19 @@ void LibraryExportWorker::startExport() {
 
     m_exportActive = true;
 
-    if (m_pModel->exportEntireMusicLibrary) {
+    if (m_model.exportEntireMusicLibrary) {
         qInfo() << "Exporting ENTIRE music library...";
         m_trackIds = GetAllTrackIds();
         m_crateIds = QList<CrateId>::fromSet(
-                m_pTrackCollection->crates().collectCrateIdsOfTracks(m_trackIds));
+                m_trackCollection.crates().collectCrateIdsOfTracks(m_trackIds));
     } else {
         qInfo() << "Exporting selected crates...";
-        m_trackIds = GetTracksIdsInCrates(m_pModel->selectedCrates);
-        m_crateIds = m_pModel->selectedCrates;
+        m_trackIds = GetTracksIdsInCrates(m_model.selectedCrates);
+        m_crateIds = m_model.selectedCrates;
     }
 
     if (m_trackIds.isEmpty()) {
-        QMessageBox::information(dynamic_cast<QWidget *>(parent()),
+        QMessageBox::information(this,
                 tr("No tracks to export"),
                 tr("There are no tracks to export in the selection made.  "
                    "Nothing will be exported."),
@@ -140,29 +140,23 @@ void LibraryExportWorker::startExport() {
 
     // Check for presence of any existing EL database.  If there is already one,
     // prompt for whether to merge into it or not.
-    m_pElDb.reset(new el::database{m_pModel->engineLibraryDir.toStdString()});
+    m_pElDb = std::make_unique<el::database>(m_model.engineLibraryDir.toStdString());
     if (m_pElDb->exists()) {
-        int ret = QMessageBox::question(dynamic_cast<QWidget *>(parent()),
-                tr("Merge Into Existing Library?"),
                 tr("There is already an existing library in directory ") +
-                        m_pModel->engineLibraryDir +
-                        tr("\nIf you proceed, the Mixxx library will be merged into "
+                        m_model.engineLibraryDir +
                            "this existing library.  Do you want to merge into the "
                            "the existing library?"),
                 QMessageBox::Yes | QMessageBox::Cancel,
                 QMessageBox::Cancel);
-        if (ret != QMessageBox::Yes) {
-            return;
-        }
+                if (ret != QMessageBox::Yes) {
+                    return;
+                }
     }
 
     // Max progress count = no. crates + no. tracks + 2 (start & finish actions)
     int maxSteps = m_trackIds.count() + m_crateIds.count() + 2;
-    m_pProgress.reset(new QProgressDialog{"Getting ready to export...",
-            "Cancel",
-            0,
-            maxSteps,
-            dynamic_cast<QWidget *>(parent())});
+    m_pProgress = make_parented<QProgressDialog>(
+            "Getting ready to export...", "Cancel", 0, maxSteps, this);
     connect(m_pProgress.get(), SIGNAL(canceled()), this, SLOT(cancel()));
     m_pProgress->setWindowTitle(tr("Export Library"));
     m_pProgress->setWindowModality(Qt::WindowModal);
@@ -181,22 +175,22 @@ void LibraryExportWorker::setupElDatabase() {
         // Create new database.
         // Note that we create in temporary directory and then move over, as
         // SQLite commands appear to be slow when run directly on USB sticks.
-        qInfo() << "Creating new empty database in" << m_pModel->engineLibraryDir;
+        qInfo() << "Creating new empty database in" << m_model.engineLibraryDir;
         m_pProgress->setLabelText(tr("Creating database..."));
-        m_pElDb.reset(new el::database{std::move(el::create_database(
-                m_tempEngineLibraryDir.path().toStdString(), el::version_1_7_1))});
+        m_pElDb = std::make_unique<el::database>(std::move(el::create_database(
+                m_tempEngineLibraryDir.path().toStdString(), el::version_1_7_1)));
     } else {
         // Copy the DB to our temporary directory whilst exporting.
-        copyFilesInDir(m_pModel->engineLibraryDir, m_tempEngineLibraryDir.path());
+        copyFilesInDir(m_model.engineLibraryDir, m_tempEngineLibraryDir.path());
     }
 
     // Create the music export directory, if it doesn't already exist.
-    QDir().mkpath(m_pModel->musicFilesDir);
+    QDir().mkpath(m_model.musicFilesDir);
 
     // Currently we don't schedule tracks for analysis because the AnalysisFeature code changed.
 
     for (auto trackId : m_trackIds) {
-        exportTrack(m_pTrackCollection->getTrackDAO().getTrack(trackId));
+        exportTrack(m_trackCollection.getTrackDAO().getTrack(trackId));
     }
 }
 
@@ -246,7 +240,7 @@ QString LibraryExportWorker::copyFile(TrackPointer pTrack) {
     // the destination files after the DB track identifier.
     auto srcFileInfo = pTrack->getFileInfo();
     QString dstFilename = QString::number(pTrack->getId().value()) + "." + srcFileInfo.suffix();
-    QDir dstDir{m_pModel->musicFilesDir};
+    QDir dstDir{m_model.musicFilesDir};
     auto dstFilePath = dstDir.filePath(dstFilename);
     auto shouldCopyFile = true;
     if (QFile::exists(dstFilePath)) {
@@ -273,7 +267,7 @@ void LibraryExportWorker::writeMetadata(TrackPointer pTrack, const QString &dstF
 
     // Create or update a track record.
     QString trackRelPath = "../";
-    trackRelPath = trackRelPath + MixxxExportDirName + "/" + dstFilename;
+    trackRelPath = trackRelPath + LibraryExportModel::MixxxExportDirName + "/" + dstFilename;
     el::track t = createOrLoadTrack(db, trackRelPath);
     t.set_track_number(pTrack->getTrackNumber().toInt());
     t.set_duration(std::chrono::seconds{pTrack->getDurationInt()});
@@ -405,7 +399,7 @@ void LibraryExportWorker::exportCurrentCrate() {
     auto &crateId = m_crateIds[m_currCrateIndex];
     auto &db = *m_pElDb;
     Crate crate;
-    m_pTrackCollection->crates().readCrateById(crateId, &crate);
+    m_trackCollection.crates().readCrateById(crateId, &crate);
     m_pProgress->setLabelText(tr("Exporting crate") + " " + crate.getName());
     qInfo() << "Exporting crate" << crate.getName();
     auto elCrate = createOrLoadCrate(db, crate.getName());
@@ -434,11 +428,11 @@ void LibraryExportWorker::exportCurrentCrate() {
 
 void LibraryExportWorker::finishExport() {
     // Copy the DB files over to the final destination.
-    copyFilesInDir(m_tempEngineLibraryDir.path(), m_pModel->engineLibraryDir);
+    copyFilesInDir(m_tempEngineLibraryDir.path(), m_model.engineLibraryDir);
 
     m_pProgress->setValue(m_pProgress->maximum());
     m_exportActive = false;
-    QMessageBox::information(dynamic_cast<QWidget *>(parent()),
+    QMessageBox::information(this,
             tr("Export Completed"),
             tr("The Mixxx library has been successfully exported."),
             QMessageBox::Ok,
@@ -448,7 +442,7 @@ void LibraryExportWorker::finishExport() {
 
 void LibraryExportWorker::cancel() {
     m_exportActive = false;
-    QMessageBox::information(dynamic_cast<QWidget *>(parent()),
+    QMessageBox::information(this,
             tr("Export Aborted"),
             tr("Library export was aborted.  The Mixxx library has "
                "only been partially exported."),
@@ -459,7 +453,7 @@ void LibraryExportWorker::cancel() {
 
 void LibraryExportWorker::fail() {
     m_exportActive = false;
-    QMessageBox::information(dynamic_cast<QWidget *>(parent()),
+    QMessageBox::information(this,
             tr("Export Failed"),
             tr("Library export failed.  The Mixxx library has only been "
                "partially exported."),
@@ -471,15 +465,15 @@ void LibraryExportWorker::fail() {
 QList<TrackId> LibraryExportWorker::GetAllTrackIds() {
     // Obtain a list of all track ids across all directories.
     QList<TrackId> trackIds;
-    auto dirs = m_pTrackCollection->getDirectoryDAO().getDirs();
+    auto dirs = m_trackCollection.getDirectoryDAO().getDirs();
     for (auto iter = dirs.cbegin(); iter != dirs.cend(); ++iter)
-        trackIds.append(m_pTrackCollection->getTrackDAO().getTrackIds(*iter));
+        trackIds.append(m_trackCollection.getTrackDAO().getTrackIds(*iter));
     return trackIds;
 }
 
 QList<TrackId> LibraryExportWorker::GetTracksIdsInCrate(CrateId crateId) {
     QList<TrackId> trackIds;
-    auto result = m_pTrackCollection->crates().selectCrateTracksSorted(crateId);
+    auto result = m_trackCollection.crates().selectCrateTracksSorted(crateId);
     while (result.next()) {
         trackIds.append(result.trackId());
     }
@@ -489,7 +483,7 @@ QList<TrackId> LibraryExportWorker::GetTracksIdsInCrate(CrateId crateId) {
 QList<TrackId> LibraryExportWorker::GetTracksIdsInCrates(const QList<CrateId> &crateIds) {
     QList<TrackId> trackIds;
     for (auto iter = crateIds.cbegin(); iter != crateIds.end(); ++iter) {
-        auto result = m_pTrackCollection->crates().selectCrateTracksSorted(*iter);
+        auto result = m_trackCollection.crates().selectCrateTracksSorted(*iter);
         while (result.next()) {
             trackIds.append(result.trackId());
         }

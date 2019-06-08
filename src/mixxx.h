@@ -29,6 +29,7 @@
 #include "util/cmdlineargs.h"
 #include "util/timer.h"
 #include "util/db/dbconnectionpool.h"
+#include "util/memory.h"
 #include "soundio/sounddeviceerror.h"
 
 class ChannelHandleFactory;
@@ -188,7 +189,7 @@ class MixxxMainWindow : public QMainWindow {
     DlgPreferences* m_pPrefDlg;
 
     // Library exporter
-    LibraryExporter *m_pLibraryExporter;
+    std::unique_ptr<LibraryExporter> m_pLibraryExporter;
 
     ConfigObject<ConfigValueKbd>* m_pKbdConfig;
     ConfigObject<ConfigValueKbd>* m_pKbdConfigEmpty;

@@ -2,23 +2,25 @@
 #define LIBRARYEXPORTER_H
 
 #include <QString>
-#include <memory>
+
 #include "library/analysisfeature.h"
 #include "library/export/dlglibraryexport.h"
 #include "library/export/libraryexportworker.h"
 #include "library/trackcollection.h"
 #include "preferences/usersettings.h"
+#include "util/memory.h"
+#include "util/parented_ptr.h"
 
 // The LibraryExporter class holds both a library export dialog and a library
 // export worker, managing the communication between them and allowing the user
 // to easily kick off a library export.
-class LibraryExporter : public QObject {
+class LibraryExporter : public QWidget {
     Q_OBJECT
   public:
-    LibraryExporter(QWidget *parent,
+    LibraryExporter(QWidget* parent,
             UserSettingsPointer pConfig,
-            TrackCollection *pTrackCollection,
-            AnalysisFeature *pAnalysisFeature);
+            TrackCollection& trackCollection,
+            AnalysisFeature& analysisFeature);
 
   public slots:
     void requestExport();
@@ -27,11 +29,11 @@ class LibraryExporter : public QObject {
     void startExport();
 
   private:
-    std::shared_ptr<LibraryExportModel> m_pModel;
-    TrackCollection *m_pTrackCollection;
-    AnalysisFeature *m_pAnalysisFeature;
-
-    DlgLibraryExport *m_pDialog;
+    LibraryExportModel m_model;
+    TrackCollection& m_trackCollection;
+    AnalysisFeature& m_analysisFeature;
+    parented_ptr<DlgLibraryExport> m_pDialog;
+    parented_ptr<LibraryExportWorker> m_pWorker;
 };
 
 #endif // LIBRARYEXPORTER_H

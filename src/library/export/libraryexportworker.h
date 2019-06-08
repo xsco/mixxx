@@ -7,21 +7,23 @@
 #include <QTemporaryDir>
 #include <djinterop/enginelibrary.hpp>
 #include <memory>
+
 #include "library/analysisfeature.h"
 #include "library/crate/crateid.h"
 #include "library/export/libraryexportmodel.h"
 #include "library/trackcollection.h"
 #include "track/trackid.h"
+#include "util/parented_ptr.h"
 
 class TrackCollection;
 
-class LibraryExportWorker : public QObject {
+class LibraryExportWorker : public QWidget {
     Q_OBJECT
   public:
     LibraryExportWorker(QWidget *parent,
-            std::shared_ptr<LibraryExportModel> pModel,
-            TrackCollection *pTrackCollection,
-            AnalysisFeature *pAnalysisFeature);
+            LibraryExportModel &model,
+            TrackCollection &trackCollection,
+            AnalysisFeature &analysisFeature);
 
     virtual ~LibraryExportWorker();
 
@@ -51,11 +53,11 @@ class LibraryExportWorker : public QObject {
     QList<TrackId> GetTracksIdsInCrate(CrateId crateId);
     QList<TrackId> GetTracksIdsInCrates(const QList<CrateId> &crateIds);
 
-    std::shared_ptr<LibraryExportModel> m_pModel;
-    TrackCollection *m_pTrackCollection;
-    AnalysisFeature *m_pAnalysisFeature;
+    LibraryExportModel &m_model;
+    TrackCollection &m_trackCollection;
+    AnalysisFeature &m_analysisFeature;
 
-    std::unique_ptr<QProgressDialog> m_pProgress;
+    parented_ptr<QProgressDialog> m_pProgress;
     bool m_exportActive;
     int m_numTracksDone;
     int m_currCrateIndex;

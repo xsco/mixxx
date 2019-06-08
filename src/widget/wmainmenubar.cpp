@@ -138,7 +138,7 @@ void WMainMenuBar::initialize() {
     pLibraryMenu->addAction(pLibraryRescan);
 
     QString exportTitle = tr("E&xport Library for Engine Prime");
-    QString exportText = tr("Exports the library to other media");
+    QString exportText = tr("Export the library for another format");
     auto pLibraryExport = new QAction(exportTitle, this);
     pLibraryExport->setStatusTip(exportText);
     pLibraryExport->setWhatsThis(buildWhatsThis(exportTitle, exportText));
