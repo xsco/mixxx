@@ -4,31 +4,32 @@
 
 #include "library/trackcollection.h"
 
-DlgLibraryExport::DlgLibraryExport(
-        QWidget *parent,
+DlgLibraryExport::DlgLibraryExport(QWidget *parent,
         UserSettingsPointer pConfig,
         TrackCollection *pTrackCollection,
-        std::shared_ptr<LibraryExportModel> pModel) :
-    QDialog(parent),
-    m_pConfig{pConfig},
-    m_pTrackCollection{pTrackCollection},
-    m_pModel{pModel}
-{
+        std::shared_ptr<LibraryExportModel> pModel)
+        : QDialog(parent),
+          m_pConfig{pConfig},
+          m_pTrackCollection{pTrackCollection},
+          m_pModel{pModel} {
     m_pWholeLibraryRadio_ = new QRadioButton(tr("Entire music library"));
     m_pCratesRadio = new QRadioButton(tr("Selected crates"));
     m_pCratesList = new QListWidget();
     m_pCratesList->setSelectionMode(QListWidget::ExtendedSelection);
 
-    connect(
-            m_pWholeLibraryRadio_, &QRadioButton::clicked,
-            this, &DlgLibraryExport::exportWholeLibrarySelected);
-    connect(
-            m_pCratesRadio, &QRadioButton::clicked,
-            this, &DlgLibraryExport::exportSelectedCratedSelected);
+    connect(m_pWholeLibraryRadio_,
+            &QRadioButton::clicked,
+            this,
+            &DlgLibraryExport::exportWholeLibrarySelected);
+    connect(m_pCratesRadio,
+            &QRadioButton::clicked,
+            this,
+            &DlgLibraryExport::exportSelectedCratedSelected);
 
-    connect(
-            m_pCratesList, &QListWidget::itemSelectionChanged,
-            this, &DlgLibraryExport::crateSelectionChanged);
+    connect(m_pCratesList,
+            &QListWidget::itemSelectionChanged,
+            this,
+            &DlgLibraryExport::crateSelectionChanged);
 
     auto *formLayout = new QFormLayout();
     m_pExportDirTextField = new QLineEdit();
@@ -37,19 +38,20 @@ DlgLibraryExport::DlgLibraryExport(
     m_pEngineLibraryDirTextField->setReadOnly(true);
     m_pMusicFilesDirTextField = new QLineEdit();
     m_pMusicFilesDirTextField->setReadOnly(true);
-    auto *trackAnalysisNoteField = new QLabel(tr(
-                "Note: all affected music files will be scheduled for "
-                "analysis before they can be exported.  This can take some "
-                "time if there are many tracks requiring analysis in the music "
-                "library or selected crates."));
+    auto *trackAnalysisNoteField =
+            new QLabel(tr("Note: all affected music files will be scheduled for "
+                          "analysis before they can be exported.  This can take some "
+                          "time if there are many tracks requiring analysis in the music "
+                          "library or selected crates."));
     trackAnalysisNoteField->setWordWrap(true);
     auto *exportDirBrowseButton = new QPushButton(tr("Browse"));
     auto *exportDirLayout = new QHBoxLayout();
     exportDirLayout->addWidget(m_pExportDirTextField);
     exportDirLayout->addWidget(exportDirBrowseButton);
-    connect(
-            exportDirBrowseButton, &QPushButton::clicked,
-            this, &DlgLibraryExport::browseExportDirectory);
+    connect(exportDirBrowseButton,
+            &QPushButton::clicked,
+            this,
+            &DlgLibraryExport::browseExportDirectory);
     formLayout->addRow(tr("Base export directory"), exportDirLayout);
     formLayout->addRow(tr("Engine Library export directory"), m_pEngineLibraryDirTextField);
     formLayout->addRow(tr("Copy music files to"), m_pMusicFilesDirTextField);
@@ -82,7 +84,7 @@ DlgLibraryExport::DlgLibraryExport(
 void DlgLibraryExport::reset() {
     // Reset the model
     m_pModel->clear();
-    
+
     m_pWholeLibraryRadio_->setChecked(true);
     exportWholeLibrarySelected();
 
@@ -90,8 +92,7 @@ void DlgLibraryExport::reset() {
     auto crates = m_pTrackCollection->crates().selectCrates();
     m_pCratesList->clear();
     Crate crate;
-    while (crates.populateNext(&crate))
-    {
+    while (crates.populateNext(&crate)) {
         auto *item = new QListWidgetItem{crate.getName()};
         QVariant variant;
         variant.setValue(crate.getId().value());
@@ -104,41 +105,36 @@ void DlgLibraryExport::reset() {
     m_pMusicFilesDirTextField->clear();
 }
 
-void DlgLibraryExport::exportWholeLibrarySelected()
-{
+void DlgLibraryExport::exportWholeLibrarySelected() {
     m_pCratesList->setEnabled(false);
     m_pModel->exportEntireMusicLibrary = true;
 }
 
-void DlgLibraryExport::exportSelectedCratedSelected()
-{
+void DlgLibraryExport::exportSelectedCratedSelected() {
     m_pCratesList->setEnabled(true);
     m_pModel->exportEntireMusicLibrary = false;
 }
 
-void DlgLibraryExport::crateSelectionChanged()
-{
+void DlgLibraryExport::crateSelectionChanged() {
     m_pModel->selectedCrates.clear();
-    for (auto *item : m_pCratesList->selectedItems())
-    {
+    for (auto *item : m_pCratesList->selectedItems()) {
         QVariant variant = item->data(Qt::UserRole);
         CrateId id{variant.value<int>()};
         m_pModel->selectedCrates.append(id);
     }
 }
 
-void DlgLibraryExport::browseExportDirectory()
-{
-    QString lastExportDirectory = m_pConfig->getValue(
-            ConfigKey("[Library]", "LastLibraryExportDirectory"),
-            QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
-    auto baseExportDirectoryStr = QFileDialog::getExistingDirectory(
-            NULL, tr("Export Library To"), lastExportDirectory);
+void DlgLibraryExport::browseExportDirectory() {
+    QString lastExportDirectory =
+            m_pConfig->getValue(ConfigKey("[Library]", "LastLibraryExportDirectory"),
+                    QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
+    auto baseExportDirectoryStr =
+            QFileDialog::getExistingDirectory(NULL, tr("Export Library To"), lastExportDirectory);
     if (baseExportDirectoryStr.isEmpty()) {
         return;
     }
     m_pConfig->set(ConfigKey("[Library]", "LastLibraryExportDirectory"),
-                   ConfigValue(baseExportDirectoryStr));
+            ConfigValue(baseExportDirectoryStr));
 
     QDir baseExportDirectory{baseExportDirectoryStr};
     m_pModel->engineLibraryDir = baseExportDirectory.filePath(EngineLibraryDirName);
@@ -149,13 +145,10 @@ void DlgLibraryExport::browseExportDirectory()
     m_pMusicFilesDirTextField->setText(m_pModel->musicFilesDir);
 }
 
-void DlgLibraryExport::exportRequested()
-{
+void DlgLibraryExport::exportRequested() {
     // Check a base export directory has been chosen
-    if (m_pExportDirTextField->text().isEmpty())
-    {
-        QMessageBox::information(
-                this,
+    if (m_pExportDirTextField->text().isEmpty()) {
+        QMessageBox::information(this,
                 tr("No Export Directory Chosen"),
                 tr("No export directory was chosen.  Please choose a directory "
                    "in order to export the music library."),
@@ -166,4 +159,3 @@ void DlgLibraryExport::exportRequested()
 
     accept();
 }
-

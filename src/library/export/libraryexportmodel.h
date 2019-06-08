@@ -9,7 +9,6 @@ const QString EngineLibraryDirName = "Engine Library";
 const QString MixxxExportDirName = "MixxxExport";
 
 struct LibraryExportModel {
-
     QString engineLibraryDir;
     QString musicFilesDir;
     bool exportEntireMusicLibrary;
@@ -23,4 +22,4 @@ struct LibraryExportModel {
     }
 };
 
-#endif  // LIBRARYEXPORTMODEL_H
+#endif // LIBRARYEXPORTMODEL_H

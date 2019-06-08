@@ -1,10 +1,10 @@
 #include "library/export/libraryexportworker.h"
 
-#include <QtGlobal>
+#include <QDesktopServices>
 #include <QFileDialog>
 #include <QFileInfo>
-#include <QDesktopServices>
 #include <QMessageBox>
+#include <QtGlobal>
 
 #include <djinterop/enginelibrary.hpp>
 
@@ -13,33 +13,32 @@
 
 namespace el = djinterop::enginelibrary;
 
-const el::musical_key keyMap[] =
-{
-  el::musical_key::c_major,       // INVALID = 0,
-  el::musical_key::c_major,       // C_MAJOR = 1,
-  el::musical_key::d_flat_major,  // D_FLAT_MAJOR = 2,
-  el::musical_key::d_major,       // D_MAJOR = 3,
-  el::musical_key::e_flat_major,  // E_FLAT_MAJOR = 4,
-  el::musical_key::e_major,       // E_MAJOR = 5,
-  el::musical_key::f_major,       // F_MAJOR = 6,
-  el::musical_key::f_sharp_major, // F_SHARP_MAJOR = 7,
-  el::musical_key::g_major,       // G_MAJOR = 8,
-  el::musical_key::a_flat_major,  // A_FLAT_MAJOR = 9,
-  el::musical_key::a_major,       // A_MAJOR = 10,
-  el::musical_key::b_flat_major,  // B_FLAT_MAJOR = 11,
-  el::musical_key::b_major,       // B_MAJOR = 12,
-  el::musical_key::c_minor,       // C_MINOR = 13,
-  el::musical_key::d_flat_minor,  // C_SHARP_MINOR = 14,
-  el::musical_key::d_minor,       // D_MINOR = 15,
-  el::musical_key::e_flat_minor,  // E_FLAT_MINOR = 16,
-  el::musical_key::e_minor,       // E_MINOR = 17,
-  el::musical_key::f_minor,       // F_MINOR = 18,
-  el::musical_key::f_sharp_minor, // F_SHARP_MINOR = 19,
-  el::musical_key::g_minor,       // G_MINOR = 20,
-  el::musical_key::a_flat_minor,  // G_SHARP_MINOR = 21,
-  el::musical_key::a_minor,       // A_MINOR = 22,
-  el::musical_key::b_flat_minor,  // B_FLAT_MINOR = 23,
-  el::musical_key::b_minor,       // B_MINOR = 24
+const el::musical_key keyMap[] = {
+        el::musical_key::c_major,       // INVALID = 0,
+        el::musical_key::c_major,       // C_MAJOR = 1,
+        el::musical_key::d_flat_major,  // D_FLAT_MAJOR = 2,
+        el::musical_key::d_major,       // D_MAJOR = 3,
+        el::musical_key::e_flat_major,  // E_FLAT_MAJOR = 4,
+        el::musical_key::e_major,       // E_MAJOR = 5,
+        el::musical_key::f_major,       // F_MAJOR = 6,
+        el::musical_key::f_sharp_major, // F_SHARP_MAJOR = 7,
+        el::musical_key::g_major,       // G_MAJOR = 8,
+        el::musical_key::a_flat_major,  // A_FLAT_MAJOR = 9,
+        el::musical_key::a_major,       // A_MAJOR = 10,
+        el::musical_key::b_flat_major,  // B_FLAT_MAJOR = 11,
+        el::musical_key::b_major,       // B_MAJOR = 12,
+        el::musical_key::c_minor,       // C_MINOR = 13,
+        el::musical_key::d_flat_minor,  // C_SHARP_MINOR = 14,
+        el::musical_key::d_minor,       // D_MINOR = 15,
+        el::musical_key::e_flat_minor,  // E_FLAT_MINOR = 16,
+        el::musical_key::e_minor,       // E_MINOR = 17,
+        el::musical_key::f_minor,       // F_MINOR = 18,
+        el::musical_key::f_sharp_minor, // F_SHARP_MINOR = 19,
+        el::musical_key::g_minor,       // G_MINOR = 20,
+        el::musical_key::a_flat_minor,  // G_SHARP_MINOR = 21,
+        el::musical_key::a_minor,       // A_MINOR = 22,
+        el::musical_key::b_flat_minor,  // B_FLAT_MINOR = 23,
+        el::musical_key::b_minor,       // B_MINOR = 24
 };
 
 static void copyFilesInDir(const QString &srcDir, const QString &dstDir) {
@@ -55,14 +54,11 @@ static void copyFilesInDir(const QString &srcDir, const QString &dstDir) {
 
     qInfo() << "Copying from" << srcDir << "to" << dstDir;
     for (auto &file : src.entryList(QDir::Files)) {
-        QFile::copy(
-                srcDir + QDir::separator() + file,
-                dstDir + QDir::separator() + file);
+        QFile::copy(srcDir + QDir::separator() + file, dstDir + QDir::separator() + file);
     }
 }
 
-static el::track createOrLoadTrack(
-        const el::database &db, const QString &relPath) {
+static el::track createOrLoadTrack(const el::database &db, const QString &relPath) {
     auto ids = el::find_track_ids_by_path(db, relPath.toStdString());
     if (ids.empty())
         return el::track{};
@@ -70,8 +66,7 @@ static el::track createOrLoadTrack(
         return el::track{db, ids[0]};
 }
 
-static el::crate createOrLoadCrate(
-        const el::database &db, const QString &name) {
+static el::crate createOrLoadCrate(const el::database &db, const QString &name) {
     int id;
     if (el::find_crate_by_name(db, name.toStdString(), id))
         return el::crate{db, id};
@@ -83,23 +78,25 @@ static el::musical_key convertKey(mixxx::track::io::key::ChromaticKey key) {
     return keyMap[key];
 }
 
-LibraryExportWorker::LibraryExportWorker(
-        QWidget *parent,
+LibraryExportWorker::LibraryExportWorker(QWidget *parent,
         std::shared_ptr<LibraryExportModel> pModel,
         TrackCollection *pTrackCollection,
-        AnalysisFeature *pAnalysisFeature) :
-    QObject{parent},
-    m_pModel{pModel},
-    m_pTrackCollection{pTrackCollection},
-    m_pAnalysisFeature{pAnalysisFeature},
-    m_exportActive{false},
-    m_numTracksDone{0},
-    m_currCrateIndex{0}
-{
-    connect(this, &LibraryExportWorker::readyForSetupElDatabase,
-            this, &LibraryExportWorker::setupElDatabase);
-    connect(this, &LibraryExportWorker::readyForExportCurrentCrate,
-            this, &LibraryExportWorker::exportCurrentCrate);
+        AnalysisFeature *pAnalysisFeature)
+        : QObject{parent},
+          m_pModel{pModel},
+          m_pTrackCollection{pTrackCollection},
+          m_pAnalysisFeature{pAnalysisFeature},
+          m_exportActive{false},
+          m_numTracksDone{0},
+          m_currCrateIndex{0} {
+    connect(this,
+            &LibraryExportWorker::readyForSetupElDatabase,
+            this,
+            &LibraryExportWorker::setupElDatabase);
+    connect(this,
+            &LibraryExportWorker::readyForExportCurrentCrate,
+            this,
+            &LibraryExportWorker::exportCurrentCrate);
 }
 
 LibraryExportWorker::~LibraryExportWorker() {
@@ -109,8 +106,7 @@ LibraryExportWorker::~LibraryExportWorker() {
 void LibraryExportWorker::startExport() {
     // Only permit one export to be active at any given time.
     if (m_exportActive) {
-        QMessageBox::information(
-                dynamic_cast<QWidget *>(parent()),
+        QMessageBox::information(dynamic_cast<QWidget *>(parent()),
                 tr("Export Already Active"),
                 tr("There is already a active export taking place.  Please "
                    "wait for this to finish, or cancel the existing export."),
@@ -126,16 +122,14 @@ void LibraryExportWorker::startExport() {
         m_trackIds = GetAllTrackIds();
         m_crateIds = QList<CrateId>::fromSet(
                 m_pTrackCollection->crates().collectCrateIdsOfTracks(m_trackIds));
-    }
-    else {
+    } else {
         qInfo() << "Exporting selected crates...";
         m_trackIds = GetTracksIdsInCrates(m_pModel->selectedCrates);
         m_crateIds = m_pModel->selectedCrates;
     }
 
     if (m_trackIds.isEmpty()) {
-        QMessageBox::information(
-                dynamic_cast<QWidget *>(parent()),
+        QMessageBox::information(dynamic_cast<QWidget *>(parent()),
                 tr("No tracks to export"),
                 tr("There are no tracks to export in the selection made.  "
                    "Nothing will be exported."),
@@ -147,28 +141,24 @@ void LibraryExportWorker::startExport() {
     // Check for presence of any existing EL database.  If there is already one,
     // prompt for whether to merge into it or not.
     m_pElDb.reset(new el::database{m_pModel->engineLibraryDir.toStdString()});
-    if (m_pElDb->exists())
-    {
-        int ret = QMessageBox::question(
-                dynamic_cast<QWidget *>(parent()),
+    if (m_pElDb->exists()) {
+        int ret = QMessageBox::question(dynamic_cast<QWidget *>(parent()),
                 tr("Merge Into Existing Library?"),
                 tr("There is already an existing library in directory ") +
-                m_pModel->engineLibraryDir +
-                tr("\nIf you proceed, the Mixxx library will be merged into "
-                   "this existing library.  Do you want to merge into the "
-                   "the existing library?"),
+                        m_pModel->engineLibraryDir +
+                        tr("\nIf you proceed, the Mixxx library will be merged into "
+                           "this existing library.  Do you want to merge into the "
+                           "the existing library?"),
                 QMessageBox::Yes | QMessageBox::Cancel,
                 QMessageBox::Cancel);
-        if (ret != QMessageBox::Yes)
-        {
+        if (ret != QMessageBox::Yes) {
             return;
         }
     }
 
     // Max progress count = no. crates + no. tracks + 2 (start & finish actions)
     int maxSteps = m_trackIds.count() + m_crateIds.count() + 2;
-    m_pProgress.reset(new QProgressDialog{
-        "Getting ready to export...",
+    m_pProgress.reset(new QProgressDialog{"Getting ready to export...",
             "Cancel",
             0,
             maxSteps,
@@ -187,8 +177,7 @@ void LibraryExportWorker::setupElDatabase() {
     m_pProgress->setLabelText(tr("Setting up Engine Library database..."));
     m_pProgress->setValue(m_pProgress->value() + 1);
 
-    if (!m_pElDb->exists())
-    {
+    if (!m_pElDb->exists()) {
         // Create new database.
         // Note that we create in temporary directory and then move over, as
         // SQLite commands appear to be slow when run directly on USB sticks.
@@ -196,8 +185,7 @@ void LibraryExportWorker::setupElDatabase() {
         m_pProgress->setLabelText(tr("Creating database..."));
         m_pElDb.reset(new el::database{std::move(el::create_database(
                 m_tempEngineLibraryDir.path().toStdString(), el::version_1_7_1))});
-    }
-    else {
+    } else {
         // Copy the DB to our temporary directory whilst exporting.
         copyFilesInDir(m_pModel->engineLibraryDir, m_tempEngineLibraryDir.path());
     }
@@ -215,8 +203,7 @@ void LibraryExportWorker::setupElDatabase() {
 void LibraryExportWorker::exportTrack(TrackPointer pTrack) {
     if (!m_exportActive) {
         return;
-    }
-    else if (pTrack == nullptr) {
+    } else if (pTrack == nullptr) {
         qWarning() << "Received null track pointer for export!";
         fail();
         return;
@@ -258,23 +245,18 @@ QString LibraryExportWorker::copyFile(TrackPointer pTrack) {
     // chance of filename clashes, and to keep things simple, we will name
     // the destination files after the DB track identifier.
     auto srcFileInfo = pTrack->getFileInfo();
-    QString dstFilename =
-        QString::number(pTrack->getId().value()) +
-        "." +
-        srcFileInfo.suffix();
+    QString dstFilename = QString::number(pTrack->getId().value()) + "." + srcFileInfo.suffix();
     QDir dstDir{m_pModel->musicFilesDir};
     auto dstFilePath = dstDir.filePath(dstFilename);
     auto shouldCopyFile = true;
-    if (QFile::exists(dstFilePath))
-    {
+    if (QFile::exists(dstFilePath)) {
         // The destination file already exists.  Only copy if the source
         // is newer than the file currently there.
         QFileInfo dstFileInfo{dstFilePath};
         shouldCopyFile = srcFileInfo.lastModified() > dstFileInfo.lastModified();
     }
 
-    if (shouldCopyFile)
-    {
+    if (shouldCopyFile) {
         QString label = tr("Copying") + " " + pTrack->getTitle();
         m_pProgress->setLabelText(label);
         auto srcFilePath = srcFileInfo.filePath();
@@ -285,8 +267,7 @@ QString LibraryExportWorker::copyFile(TrackPointer pTrack) {
     return dstFilename;
 }
 
-void LibraryExportWorker::writeMetadata(
-        TrackPointer pTrack, const QString &dstFilename) {
+void LibraryExportWorker::writeMetadata(TrackPointer pTrack, const QString &dstFilename) {
     auto trackId = pTrack->getId();
     auto &db = *m_pElDb;
 
@@ -312,13 +293,12 @@ void LibraryExportWorker::writeMetadata(
     t.set_filename(dstFilename.toStdString());
     t.set_file_extension(pTrack->getFileInfo().suffix().toStdString());
     std::chrono::system_clock::time_point lastModifiedAt{
-        std::chrono::milliseconds{
-            pTrack->getFileModifiedTime().toMSecsSinceEpoch()}};
+            std::chrono::milliseconds{pTrack->getFileModifiedTime().toMSecsSinceEpoch()}};
     t.set_last_modified_at(lastModifiedAt);
     t.set_bitrate(pTrack->getBitrate());
     t.set_ever_played(pTrack->getTimesPlayed() > 0);
     t.set_imported(false); // Not imported from another EL database
-    t.set_no_album_art(); // Album art is not currently supported
+    t.set_no_album_art();  // Album art is not currently supported
     t.save(db);
 
     // Add to the mapping of track ids
@@ -326,9 +306,8 @@ void LibraryExportWorker::writeMetadata(
 
     // Write the performance data record
     bool perfDataExists = el::performance_data::exists(db, t.id());
-    el::performance_data p = perfDataExists
-            ? el::performance_data{db, t.id()}
-            : el::performance_data{t.id()};
+    el::performance_data p =
+            perfDataExists ? el::performance_data{db, t.id()} : el::performance_data{t.id()};
 
     // Frames used interchangeably with "samples" here.
     double totalFrames = pTrack->getDuration() * pTrack->getSampleRate();
@@ -345,8 +324,7 @@ void LibraryExportWorker::writeMetadata(
         double firstBeatPlayPos = beats->findNextBeat(0);
         double lastBeatPlayPos = beats->findPrevBeat(totalFrames * 2);
         int numBeats = beats->numBeatsInRange(firstBeatPlayPos, lastBeatPlayPos);
-        el::track_beat_grid elGrid{
-            0, firstBeatPlayPos / 2, numBeats, lastBeatPlayPos / 2};
+        el::track_beat_grid elGrid{0, firstBeatPlayPos / 2, numBeats, lastBeatPlayPos / 2};
         el::normalise_beat_grid(elGrid, totalFrames);
         p.set_default_beat_grid(elGrid);
         p.set_adjusted_beat_grid(elGrid);
@@ -366,28 +344,25 @@ void LibraryExportWorker::writeMetadata(
     std::vector<el::track_loop> elLoops;
     // TODO - fill in loops
     p.set_loops(std::begin(elLoops), std::end(elLoops));
-   
+
     // Write overview/summary waveform
     auto overviewWaveform = pTrack->getWaveformSummary();
-    if (overviewWaveform != nullptr)
-    {
+    if (overviewWaveform != nullptr) {
         uint_least64_t overviewAdjustedTotalSamples, overviewNumEntries;
         double overviewSamplesPerEntry;
-        el::calculate_overview_waveform_details(
-                totalFrames, pTrack->getSampleRate(),
-                overviewAdjustedTotalSamples, overviewNumEntries,
+        el::calculate_overview_waveform_details(totalFrames,
+                pTrack->getSampleRate(),
+                overviewAdjustedTotalSamples,
+                overviewNumEntries,
                 overviewSamplesPerEntry);
         std::vector<el::overview_waveform_entry> elOverviewWaveform;
-        for (uint_least64_t i = 0; i < overviewNumEntries; ++i)
-        {
+        for (uint_least64_t i = 0; i < overviewNumEntries; ++i) {
             auto j = overviewWaveform->getDataSize() * i / overviewNumEntries;
-            elOverviewWaveform.push_back(el::overview_waveform_entry{
-                overviewWaveform->getLow(j),
-                overviewWaveform->getMid(j),
-                overviewWaveform->getHigh(j)});
+            elOverviewWaveform.push_back(el::overview_waveform_entry{overviewWaveform->getLow(j),
+                    overviewWaveform->getMid(j),
+                    overviewWaveform->getHigh(j)});
         }
-        p.set_overview_waveform_entries(
-                overviewNumEntries,
+        p.set_overview_waveform_entries(overviewNumEntries,
                 overviewSamplesPerEntry,
                 std::begin(elOverviewWaveform),
                 std::end(elOverviewWaveform));
@@ -395,28 +370,25 @@ void LibraryExportWorker::writeMetadata(
 
     // Write high-resolution full waveform
     auto highResWaveform = pTrack->getWaveform();
-    if (highResWaveform != nullptr)
-    {
+    if (highResWaveform != nullptr) {
         uint_least64_t highResAdjustedTotalSamples, highResNumEntries;
         double highResSamplesPerEntry;
-        el::calculate_high_res_waveform_details(
-                totalFrames, pTrack->getSampleRate(),
-                highResAdjustedTotalSamples, highResNumEntries,
+        el::calculate_high_res_waveform_details(totalFrames,
+                pTrack->getSampleRate(),
+                highResAdjustedTotalSamples,
+                highResNumEntries,
                 highResSamplesPerEntry);
         std::vector<el::high_res_waveform_entry> elHighResWaveform;
-        for (uint_least64_t i = 0; i < highResNumEntries; ++i)
-        {
+        for (uint_least64_t i = 0; i < highResNumEntries; ++i) {
             auto j = highResWaveform->getDataSize() * i / highResNumEntries;
-            elHighResWaveform.push_back(el::high_res_waveform_entry{
-                highResWaveform->getLow(j),
-                highResWaveform->getMid(j),
-                highResWaveform->getHigh(j),
-                127,
-                127,
-                127});
+            elHighResWaveform.push_back(el::high_res_waveform_entry{highResWaveform->getLow(j),
+                    highResWaveform->getMid(j),
+                    highResWaveform->getHigh(j),
+                    127,
+                    127,
+                    127});
         }
-        p.set_high_res_waveform_entries(
-                highResNumEntries,
+        p.set_high_res_waveform_entries(highResNumEntries,
                 highResSamplesPerEntry,
                 std::begin(elHighResWaveform),
                 std::end(elHighResWaveform));
@@ -466,8 +438,7 @@ void LibraryExportWorker::finishExport() {
 
     m_pProgress->setValue(m_pProgress->maximum());
     m_exportActive = false;
-    QMessageBox::information(
-            dynamic_cast<QWidget *>(parent()),
+    QMessageBox::information(dynamic_cast<QWidget *>(parent()),
             tr("Export Completed"),
             tr("The Mixxx library has been successfully exported."),
             QMessageBox::Ok,
@@ -477,8 +448,7 @@ void LibraryExportWorker::finishExport() {
 
 void LibraryExportWorker::cancel() {
     m_exportActive = false;
-    QMessageBox::information(
-            dynamic_cast<QWidget *>(parent()),
+    QMessageBox::information(dynamic_cast<QWidget *>(parent()),
             tr("Export Aborted"),
             tr("Library export was aborted.  The Mixxx library has "
                "only been partially exported."),
@@ -489,8 +459,7 @@ void LibraryExportWorker::cancel() {
 
 void LibraryExportWorker::fail() {
     m_exportActive = false;
-    QMessageBox::information(
-            dynamic_cast<QWidget *>(parent()),
+    QMessageBox::information(dynamic_cast<QWidget *>(parent()),
             tr("Export Failed"),
             tr("Library export failed.  The Mixxx library has only been "
                "partially exported."),
@@ -527,4 +496,3 @@ QList<TrackId> LibraryExportWorker::GetTracksIdsInCrates(const QList<CrateId> &c
     }
     return trackIds;
 }
-

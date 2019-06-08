@@ -35,8 +35,9 @@ class TrackExportWorker : public QThread {
     // Constructor does not validate the destination directory.  Calling classes
     // should do that.
     TrackExportWorker(QString destDir, QList<TrackPointer> tracks)
-            : m_destDir(destDir), m_tracks(tracks) { }
-    virtual ~TrackExportWorker() { };
+            : m_destDir(destDir), m_tracks(tracks) {
+    }
+    virtual ~TrackExportWorker(){};
 
     // exports ALL the tracks.  Thread joins on success or failure.
     void run() override;
@@ -58,8 +59,7 @@ class TrackExportWorker : public QThread {
     // Note that fully qualifying the Answer class name is required for the
     // signal to connect.
     void askOverwriteMode(
-            QString filename,
-            std::promise<TrackExportWorker::OverwriteAnswer>* promise);
+            QString filename, std::promise<TrackExportWorker::OverwriteAnswer>* promise);
     void progress(QString filename, int progress, int count);
     void canceled();
 
@@ -69,8 +69,7 @@ class TrackExportWorker : public QThread {
     // exists, will emit an overwrite request signal to ask how to proceed.
     // On unrecoverable error, sets the error message and stops the export
     // process entirely.
-    void copyFile(const QFileInfo& source_fileinfo,
-                  const QString& dest_filename);
+    void copyFile(const QFileInfo& source_fileinfo, const QString& dest_filename);
 
     // Emit a signal requesting overwrite mode, and block until we get an
     // answer.  Updates m_overwriteMode appropriately.
@@ -84,4 +83,4 @@ class TrackExportWorker : public QThread {
     const QList<TrackPointer> m_tracks;
 };
 
-#endif  // TRACKEXPORTWORKER_H
+#endif // TRACKEXPORTWORKER_H

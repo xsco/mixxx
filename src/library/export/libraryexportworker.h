@@ -1,32 +1,31 @@
 #ifndef LIBRARYEXPORTWORKER_H
 #define LIBRARYEXPORTWORKER_H
 
-#include <memory>
-#include <QObject>
 #include <QList>
+#include <QObject>
 #include <QProgressDialog>
 #include <QTemporaryDir>
 #include <djinterop/enginelibrary.hpp>
+#include <memory>
 #include "library/analysisfeature.h"
-#include "library/trackcollection.h"
 #include "library/crate/crateid.h"
 #include "library/export/libraryexportmodel.h"
+#include "library/trackcollection.h"
 #include "track/trackid.h"
 
 class TrackCollection;
 
 class LibraryExportWorker : public QObject {
     Q_OBJECT
-public:
-    LibraryExportWorker(
-            QWidget *parent,
+  public:
+    LibraryExportWorker(QWidget *parent,
             std::shared_ptr<LibraryExportModel> pModel,
             TrackCollection *pTrackCollection,
             AnalysisFeature *pAnalysisFeature);
 
     virtual ~LibraryExportWorker();
 
-signals:
+  signals:
     void exportFinished();
     void exportCancelled();
     void exportFailed();
@@ -34,10 +33,10 @@ signals:
     void readyForSetupElDatabase(QPrivateSignal);
     void readyForExportCurrentCrate(QPrivateSignal);
 
-public slots:
+  public slots:
     void startExport();
 
-private slots:
+  private slots:
     void setupElDatabase();
     void exportTrack(TrackPointer pTrack);
     void exportCurrentCrate();
@@ -45,7 +44,7 @@ private slots:
     void cancel();
     void fail();
 
-private:
+  private:
     QString copyFile(TrackPointer pTrack);
     void writeMetadata(TrackPointer pTrack, const QString &dstFilename);
     QList<TrackId> GetAllTrackIds();
@@ -68,4 +67,4 @@ private:
     QHash<int, int> m_trackIdToElId;
 };
 
-#endif  // LIBRARYEXPORTWORKER_H
+#endif // LIBRARYEXPORTWORKER_H

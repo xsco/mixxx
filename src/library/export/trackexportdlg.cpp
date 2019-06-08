@@ -1,18 +1,14 @@
 #include "library/export/trackexportdlg.h"
 
-#include <QFileInfo>
 #include <QDesktopServices>
+#include <QFileInfo>
 #include <QMessageBox>
 
 #include "util/assert.h"
 
-TrackExportDlg::TrackExportDlg(QWidget *parent,
-                               UserSettingsPointer pConfig,
-                               TrackExportWorker* worker)
-        : QDialog(parent),
-          Ui::DlgTrackExport(),
-          m_pConfig(pConfig),
-          m_worker(worker) {
+TrackExportDlg::TrackExportDlg(
+        QWidget* parent, UserSettingsPointer pConfig, TrackExportWorker* worker)
+        : QDialog(parent), Ui::DlgTrackExport(), m_pConfig(pConfig), m_worker(worker) {
     setupUi(this);
     connect(cancelButton, SIGNAL(clicked()), this, SLOT(cancelButtonClicked()));
     exportProgress->setMinimum(0);
@@ -21,7 +17,9 @@ TrackExportDlg::TrackExportDlg(QWidget *parent,
     statusLabel->setText("");
     setModal(true);
 
-    connect(m_worker, SIGNAL(progress(QString, int, int)), this,
+    connect(m_worker,
+            SIGNAL(progress(QString, int, int)),
+            this,
             SLOT(slotProgress(QString, int, int)));
     connect(m_worker,
             SIGNAL(askOverwriteMode(QString, std::promise<TrackExportWorker::OverwriteAnswer>*)),
@@ -55,14 +53,12 @@ void TrackExportDlg::slotProgress(QString filename, int progress, int count) {
 }
 
 void TrackExportDlg::slotAskOverwriteMode(
-        QString filename,
-        std::promise<TrackExportWorker::OverwriteAnswer>* promise) {
-    QMessageBox question_box(
-            QMessageBox::Warning,
+        QString filename, std::promise<TrackExportWorker::OverwriteAnswer>* promise) {
+    QMessageBox question_box(QMessageBox::Warning,
             tr("Overwrite Existing File?"),
             tr("\"%1\" already exists, overwrite?").arg(filename),
-            QMessageBox::Cancel | QMessageBox::No | QMessageBox::NoToAll
-            | QMessageBox::Yes | QMessageBox::YesToAll);
+            QMessageBox::Cancel | QMessageBox::No | QMessageBox::NoToAll | QMessageBox::Yes |
+                    QMessageBox::YesToAll);
     question_box.setDefaultButton(QMessageBox::No);
     question_box.setButtonText(QMessageBox::Yes, tr("&Overwrite"));
     question_box.setButtonText(QMessageBox::YesToAll, tr("Over&write All"));
@@ -96,10 +92,11 @@ void TrackExportDlg::finish() {
     m_worker->stop();
     m_worker->wait();
     if (m_worker->errorMessage().length()) {
-        QMessageBox::warning(
-                NULL,
-                tr("Export Error"), m_worker->errorMessage(),
-                QMessageBox::Ok, QMessageBox::Ok);
+        QMessageBox::warning(NULL,
+                tr("Export Error"),
+                m_worker->errorMessage(),
+                QMessageBox::Ok,
+                QMessageBox::Ok);
     }
     hide();
     accept();

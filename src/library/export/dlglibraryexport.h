@@ -1,10 +1,10 @@
 #ifndef DLGLIBRARYEXPORT_H
 #define DLGLIBRARYEXPORT_H
 
-#include <memory>
 #include <QtWidgets>
-#include "preferences/usersettings.h"
+#include <memory>
 #include "library/export/libraryexportmodel.h"
+#include "preferences/usersettings.h"
 
 class TrackCollection;
 
@@ -12,13 +12,11 @@ class TrackCollection;
  * The DlgLibraryExport class is a UI window that gathers information from
  * the user about how they would like to export the Mixxx library.
  */
-class DlgLibraryExport : public QDialog
-{
+class DlgLibraryExport : public QDialog {
     Q_OBJECT
 
-public:
-    DlgLibraryExport(
-            QWidget *parent,
+  public:
+    DlgLibraryExport(QWidget *parent,
             UserSettingsPointer pConfig,
             TrackCollection *pTrackCollection,
             std::shared_ptr<LibraryExportModel> pModel);
@@ -26,14 +24,14 @@ public:
     // Reset dialog (and model) back to its initial state.
     void reset();
 
-private slots:
+  private slots:
     void exportWholeLibrarySelected();
     void exportSelectedCratedSelected();
     void crateSelectionChanged();
     void browseExportDirectory();
     void exportRequested();
 
-private:
+  private:
     UserSettingsPointer m_pConfig;
     TrackCollection *m_pTrackCollection;
 
@@ -48,4 +46,3 @@ private:
 };
 
 #endif // DLGLIBRARYEXPORT_H
-

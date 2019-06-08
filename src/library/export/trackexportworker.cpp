@@ -1,8 +1,8 @@
 #include "library/export/trackexportworker.h"
 
+#include <QDebug>
 #include <QFileInfo>
 #include <QMessageBox>
-#include <QDebug>
 
 namespace {
 
@@ -10,8 +10,7 @@ QString rewriteFilename(const QFileInfo& fileinfo, int index) {
     // We don't have total control over the inputs, so definitely
     // don't use .arg().arg().arg().
     const QString index_str = QString("%1").arg(index, 4, 10, QChar('0'));
-    return QString("%1-%2.%3").arg(fileinfo.baseName(), index_str,
-                                   fileinfo.completeSuffix());
+    return QString("%1-%2.%3").arg(fileinfo.baseName(), index_str, fileinfo.completeSuffix());
 }
 
 // Iterate over a list of tracks and generate a minimal set of files to copy.
@@ -26,9 +25,7 @@ QMap<QString, QFileInfo> createCopylist(const QList<TrackPointer>& tracks) {
     QMap<QString, QFileInfo> copylist;
     for (const auto& it : tracks) {
         if (it->getCanonicalLocation().isEmpty()) {
-            qWarning()
-                    << "File not found or inaccessible while exporting"
-                    << it->getLocation();
+            qWarning() << "File not found or inaccessible while exporting" << it->getLocation();
             // Skip file
             continue;
         }
@@ -53,11 +50,8 @@ QMap<QString, QFileInfo> createCopylist(const QList<TrackPointer>& tracks) {
                 break;
             }
             if (++duplicateCounter >= 10000) {
-                qWarning()
-                        << "Failed to generate a unique file name from"
-                        << fileName
-                        << "while exporting"
-                        << it->getLocation();
+                qWarning() << "Failed to generate a unique file name from" << fileName
+                           << "while exporting" << it->getLocation();
                 break;
             }
             // Next round
@@ -67,7 +61,7 @@ QMap<QString, QFileInfo> createCopylist(const QList<TrackPointer>& tracks) {
     return copylist;
 }
 
-}  // namespace
+} // namespace
 
 void TrackExportWorker::run() {
     int i = 0;
@@ -88,8 +82,7 @@ void TrackExportWorker::run() {
     }
 }
 
-void TrackExportWorker::copyFile(const QFileInfo& source_fileinfo,
-                                 const QString& dest_filename) {
+void TrackExportWorker::copyFile(const QFileInfo& source_fileinfo, const QString& dest_filename) {
     QString sourceFilename = source_fileinfo.canonicalFilePath();
     const QString dest_path = QDir(m_destDir).filePath(dest_filename);
     QFileInfo dest_fileinfo(dest_path);
@@ -122,9 +115,8 @@ void TrackExportWorker::copyFile(const QFileInfo& source_fileinfo,
         QFile dest_file(dest_path);
         qDebug() << "Removing existing file" << dest_path;
         if (!dest_file.remove()) {
-            const QString error_message = tr(
-                    "Error removing file %1: %2. Stopping.").arg(
-                    dest_path, dest_file.errorString());
+            const QString error_message = tr("Error removing file %1: %2. Stopping.")
+                                                  .arg(dest_path, dest_file.errorString());
             qWarning() << error_message;
             m_errorMessage = error_message;
             stop();
@@ -135,9 +127,9 @@ void TrackExportWorker::copyFile(const QFileInfo& source_fileinfo,
     qDebug() << "Copying" << sourceFilename << "to" << dest_path;
     QFile source_file(sourceFilename);
     if (!source_file.copy(dest_path)) {
-        const QString error_message = tr(
-                "Error exporting track %1 to %2: %3. Stopping.").arg(
-                sourceFilename, dest_path, source_file.errorString());
+        const QString error_message =
+                tr("Error exporting track %1 to %2: %3. Stopping.")
+                        .arg(sourceFilename, dest_path, source_file.errorString());
         qWarning() << error_message;
         m_errorMessage = error_message;
         stop();
@@ -145,12 +137,10 @@ void TrackExportWorker::copyFile(const QFileInfo& source_fileinfo,
     }
 }
 
-TrackExportWorker::OverwriteAnswer TrackExportWorker::makeOverwriteRequest(
-        QString filename) {
+TrackExportWorker::OverwriteAnswer TrackExportWorker::makeOverwriteRequest(QString filename) {
     // QT's QFuture is not quite right for this type of threaded question-and-answer.
     // std::future works fine, even with signals and slots.
-    QScopedPointer<std::promise<OverwriteAnswer>> mode_promise(
-            new std::promise<OverwriteAnswer>());
+    QScopedPointer<std::promise<OverwriteAnswer>> mode_promise(new std::promise<OverwriteAnswer>());
     std::future<OverwriteAnswer> mode_future = mode_promise->get_future();
 
     emit(askOverwriteMode(filename, mode_promise.data()));

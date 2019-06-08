@@ -4,12 +4,12 @@
 #include <future>
 
 #include <QDialog>
-#include <QString>
 #include <QScopedPointer>
+#include <QString>
 
-#include "preferences/usersettings.h"
 #include "library/export/trackexportworker.h"
 #include "library/export/ui_dlgtrackexport.h"
+#include "preferences/usersettings.h"
 #include "track/track.h"
 
 // A dialog for interacting with the track exporter in an interactive manner.
@@ -25,15 +25,14 @@ class TrackExportDlg : public QDialog, public Ui::DlgTrackExport {
 
     // The dialog is prepared, but not shown on construction.  Does not
     // take ownership of the export worker.
-    TrackExportDlg(QWidget *parent, UserSettingsPointer pConfig,
-                   TrackExportWorker* worker);
-    virtual ~TrackExportDlg() { }
+    TrackExportDlg(QWidget* parent, UserSettingsPointer pConfig, TrackExportWorker* worker);
+    virtual ~TrackExportDlg() {
+    }
 
   public slots:
     void slotProgress(QString filename, int progress, int count);
     void slotAskOverwriteMode(
-            QString filename,
-            std::promise<TrackExportWorker::OverwriteAnswer>* promise);
+            QString filename, std::promise<TrackExportWorker::OverwriteAnswer>* promise);
     void cancelButtonClicked();
 
   protected:
@@ -52,4 +51,4 @@ class TrackExportDlg : public QDialog, public Ui::DlgTrackExport {
     TrackExportWorker* m_worker;
 };
 
-#endif  // DLGTRACKEXPORT_H
+#endif // DLGTRACKEXPORT_H
