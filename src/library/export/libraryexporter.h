@@ -26,10 +26,11 @@ class LibraryExporter : public QWidget {
     void requestExport();
 
   private slots:
-    void startExport();
+    void workBegin(LibraryExportModel model);
+    void workEnd();
 
   private:
-    LibraryExportModel m_model;
+    UserSettingsPointer m_pConfig;
     TrackCollection& m_trackCollection;
     AnalysisFeature& m_analysisFeature;
     parented_ptr<DlgLibraryExport> m_pDialog;

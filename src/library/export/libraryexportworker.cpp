@@ -79,7 +79,7 @@ static el::musical_key convertKey(mixxx::track::io::key::ChromaticKey key) {
 }
 
 LibraryExportWorker::LibraryExportWorker(QWidget *parent,
-        LibraryExportModel &model,
+        LibraryExportModel model,
         TrackCollection &trackCollection,
         AnalysisFeature &analysisFeature)
         : QWidget{parent},
@@ -97,13 +97,7 @@ LibraryExportWorker::LibraryExportWorker(QWidget *parent,
             &LibraryExportWorker::readyForExportCurrentCrate,
             this,
             &LibraryExportWorker::exportCurrentCrate);
-}
 
-LibraryExportWorker::~LibraryExportWorker() {
-    qInfo() << "Library export worker now being cleaned up...";
-}
-
-void LibraryExportWorker::startExport() {
     // Only permit one export to be active at any given time.
     if (m_exportActive) {
         QMessageBox::information(this,
@@ -114,7 +108,9 @@ void LibraryExportWorker::startExport() {
                 QMessageBox::Ok);
         return;
     }
+}
 
+void LibraryExportWorker::startExport() {
     m_exportActive = true;
 
     if (m_model.exportEntireMusicLibrary) {
@@ -135,6 +131,8 @@ void LibraryExportWorker::startExport() {
                    "Nothing will be exported."),
                 QMessageBox::Ok,
                 QMessageBox::Ok);
+
+        emit exportCancelled();
         return;
     }
 
@@ -149,6 +147,7 @@ void LibraryExportWorker::startExport() {
                 QMessageBox::Yes | QMessageBox::Cancel,
                 QMessageBox::Cancel);
                 if (ret != QMessageBox::Yes) {
+                    emit exportCancelled();
                     return;
                 }
     }
@@ -164,6 +163,10 @@ void LibraryExportWorker::startExport() {
 
     // Move onto setting up the EL database.
     emit readyForSetupElDatabase(QPrivateSignal{});
+}
+
+LibraryExportWorker::~LibraryExportWorker() {
+    qInfo() << "Library export worker now being cleaned up...";
 }
 
 void LibraryExportWorker::setupElDatabase() {

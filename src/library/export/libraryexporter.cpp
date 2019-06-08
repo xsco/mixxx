@@ -7,25 +7,44 @@ LibraryExporter::LibraryExporter(QWidget *parent,
         TrackCollection &trackCollection,
         AnalysisFeature &analysisFeature)
         : QWidget{parent},
-          m_model{},
+          m_pConfig{pConfig},
           m_trackCollection{trackCollection},
-          m_analysisFeature{analysisFeature},
-          m_pDialog{make_parented<DlgLibraryExport>(parent, pConfig, trackCollection, m_model)} {
-    m_pDialog->setHidden(true);
-    connect(m_pDialog.get(), SIGNAL(accepted()), this, SLOT(startExport()));
+          m_analysisFeature{analysisFeature} {
 }
 
 void LibraryExporter::requestExport() {
-    m_pDialog->reset();
-    m_pDialog->show();
-    m_pDialog->raise();
-    m_pDialog->activateWindow();
+    if (!m_pDialog) {
+        m_pDialog = make_parented<DlgLibraryExport>(
+                static_cast<QWidget *>(this->parent()), m_pConfig, m_trackCollection);
+        connect(m_pDialog.get(),
+                SIGNAL(startExport(LibraryExportModel)),
+                this,
+                SLOT(workBegin(LibraryExportModel)));
+    } else {
+        m_pDialog->show();
+        m_pDialog->raise();
+        m_pDialog->setWindowState(
+                (m_pDialog->windowState() & ~Qt::WindowMinimized) | Qt::WindowActive);
+    }
 }
 
-void LibraryExporter::startExport() {
-    m_pWorker =
-            make_parented<LibraryExportWorker>(this, m_model, m_trackCollection, m_analysisFeature);
+void LibraryExporter::workBegin(LibraryExportModel model) {
+    if (!m_pWorker) {
+        m_pWorker = make_parented<LibraryExportWorker>(static_cast<QWidget *>(this->parent()),
+                model,
+                m_trackCollection,
+                m_analysisFeature);
+        connect(m_pWorker.get(), SIGNAL(exportFinished()), m_pDialog.get(), SLOT(accept()));
+        connect(m_pWorker.get(), SIGNAL(exportFinished()), this, SLOT(workEnd()));
+        connect(m_pWorker.get(), SIGNAL(exportCancelled()), this, SLOT(workEnd()));
+        connect(m_pWorker.get(), SIGNAL(exportFailed()), this, SLOT(workEnd()));
+        m_pWorker->startExport();
+    } else {
+        // TODO: activate the worker
+    }
+}
 
-    // Start export by calling slot directly.
-    m_pWorker->startExport();
+void LibraryExporter::workEnd() {
+    qWarning() << "workEnd";
+    m_pWorker = nullptr;
 }

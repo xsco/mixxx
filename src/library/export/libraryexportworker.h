@@ -21,11 +21,13 @@ class LibraryExportWorker : public QWidget {
     Q_OBJECT
   public:
     LibraryExportWorker(QWidget *parent,
-            LibraryExportModel &model,
+            LibraryExportModel model,
             TrackCollection &trackCollection,
             AnalysisFeature &analysisFeature);
 
     virtual ~LibraryExportWorker();
+
+    void startExport();
 
   signals:
     void exportFinished();
@@ -34,9 +36,6 @@ class LibraryExportWorker : public QWidget {
 
     void readyForSetupElDatabase(QPrivateSignal);
     void readyForExportCurrentCrate(QPrivateSignal);
-
-  public slots:
-    void startExport();
 
   private slots:
     void setupElDatabase();
@@ -53,7 +52,7 @@ class LibraryExportWorker : public QWidget {
     QList<TrackId> GetTracksIdsInCrate(CrateId crateId);
     QList<TrackId> GetTracksIdsInCrates(const QList<CrateId> &crateIds);
 
-    LibraryExportModel &m_model;
+    const LibraryExportModel m_model;
     TrackCollection &m_trackCollection;
     AnalysisFeature &m_analysisFeature;
 

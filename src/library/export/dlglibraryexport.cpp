@@ -4,29 +4,20 @@
 
 #include "library/trackcollection.h"
 
-DlgLibraryExport::DlgLibraryExport(QWidget *parent,
-        UserSettingsPointer pConfig,
-        TrackCollection &trackCollection,
-        LibraryExportModel &model)
-        : QDialog(parent), m_pConfig{pConfig}, m_trackCollection{trackCollection}, m_model{model} {
-    m_pWholeLibraryRadio_ = make_parented<QRadioButton>(tr("Entire music library"));
-    connect(m_pWholeLibraryRadio_,
-            &QRadioButton::clicked,
-            this,
-            &DlgLibraryExport::exportWholeLibrarySelected);
-
-    m_pCratesRadio = make_parented<QRadioButton>(tr("Selected crates"));
-    connect(m_pCratesRadio,
-            &QRadioButton::clicked,
-            this,
-            &DlgLibraryExport::exportSelectedCratedSelected);
-
+DlgLibraryExport::DlgLibraryExport(
+        QWidget *parent, UserSettingsPointer pConfig, TrackCollection &trackCollection)
+        : QDialog(parent), m_pConfig{pConfig}, m_trackCollection{trackCollection} {
     m_pCratesList = make_parented<QListWidget>();
     m_pCratesList->setSelectionMode(QListWidget::ExtendedSelection);
-    connect(m_pCratesList,
-            &QListWidget::itemSelectionChanged,
-            this,
-            &DlgLibraryExport::crateSelectionChanged);
+    { // Populate list of crates.
+        auto crates = m_trackCollection.crates().selectCrates();
+        Crate crate;
+        while (crates.populateNext(&crate)) {
+            auto pItem = std::make_unique<QListWidgetItem>(crate.getName());
+            pItem->setData(Qt::UserRole, crate.getId().value());
+            m_pCratesList->addItem(pItem.release());
+        }
+    }
 
     m_pExportDirTextField = make_parented<QLineEdit>();
     m_pExportDirTextField->setReadOnly(true);
@@ -34,6 +25,20 @@ DlgLibraryExport::DlgLibraryExport(QWidget *parent,
     m_pEngineLibraryDirTextField->setReadOnly(true);
     m_pMusicFilesDirTextField = make_parented<QLineEdit>();
     m_pMusicFilesDirTextField->setReadOnly(true);
+
+    auto pWholeLibraryRadio = make_parented<QRadioButton>(tr("Entire music library"));
+    pWholeLibraryRadio->setChecked(true);
+    this->exportWholeLibrarySelected();
+    connect(pWholeLibraryRadio,
+            &QRadioButton::clicked,
+            this,
+            &DlgLibraryExport::exportWholeLibrarySelected);
+
+    auto pCratesRadio = make_parented<QRadioButton>(tr("Selected crates"));
+    connect(pCratesRadio,
+            &QRadioButton::clicked,
+            this,
+            &DlgLibraryExport::exportSelectedCratedSelected);
 
     auto pTrackAnalysisNoteField = make_parented<QLabel>(
             tr("Note: all affected music files will be scheduled for "
@@ -73,39 +78,18 @@ DlgLibraryExport::DlgLibraryExport(QWidget *parent,
     auto pLayout = make_parented<QGridLayout>();
     pLayout->setColumnStretch(0, 1);
     pLayout->setColumnStretch(1, 2);
-    pLayout->addWidget(m_pWholeLibraryRadio_, 0, 0);
-    pLayout->addWidget(m_pCratesRadio, 1, 0);
+    pLayout->addWidget(pWholeLibraryRadio, 0, 0);
+    pLayout->addWidget(pCratesRadio, 1, 0);
     pLayout->addWidget(m_pCratesList, 2, 0);
     pLayout->addLayout(pFormLayout, 0, 1, 3, 1);
     pLayout->addLayout(pButtonBarLayout, 3, 0, 1, 2);
 
     setLayout(pLayout);
     setWindowTitle(tr("Export Library"));
-    reset();
-}
 
-void DlgLibraryExport::reset() {
-    // Reset the model
-    m_model.clear();
-
-    m_pWholeLibraryRadio_->setChecked(true);
-    exportWholeLibrarySelected();
-
-    // Populate list of crates.
-    auto crates = m_trackCollection.crates().selectCrates();
-    m_pCratesList->clear();
-    Crate crate;
-    while (crates.populateNext(&crate)) {
-        auto pItem = std::make_unique<QListWidgetItem>(crate.getName());
-        QVariant variant;
-        variant.setValue(crate.getId().value());
-        pItem->setData(Qt::UserRole, variant);
-        m_pCratesList->addItem(pItem.release());
-    }
-
-    m_pExportDirTextField->clear();
-    m_pEngineLibraryDirTextField->clear();
-    m_pMusicFilesDirTextField->clear();
+    show();
+    raise();
+    activateWindow();
 }
 
 void DlgLibraryExport::exportWholeLibrarySelected() {
@@ -152,11 +136,11 @@ void DlgLibraryExport::exportRequested() {
         return;
     }
 
-    for (auto *item : m_pCratesList->selectedItems()) {
-        QVariant variant = item->data(Qt::UserRole);
+    for (auto *pItem : m_pCratesList->selectedItems()) {
+        QVariant variant = pItem->data(Qt::UserRole);
         CrateId id{variant.value<int>()};
         m_model.selectedCrates.append(id);
     }
 
-    accept();
+    startExport(m_model);
 }
