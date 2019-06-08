@@ -118,15 +118,6 @@ void DlgLibraryExport::exportSelectedCratedSelected() {
     m_model.exportEntireMusicLibrary = false;
 }
 
-void DlgLibraryExport::crateSelectionChanged() {
-    m_model.selectedCrates.clear();
-    for (auto *item : m_pCratesList->selectedItems()) {
-        QVariant variant = item->data(Qt::UserRole);
-        CrateId id{variant.value<int>()};
-        m_model.selectedCrates.append(id);
-    }
-}
-
 void DlgLibraryExport::browseExportDirectory() {
     QString lastExportDirectory =
             m_pConfig->getValue(ConfigKey("[Library]", "LastLibraryExportDirectory"),
@@ -159,6 +150,12 @@ void DlgLibraryExport::exportRequested() {
                 QMessageBox::Ok,
                 QMessageBox::Ok);
         return;
+    }
+
+    for (auto *item : m_pCratesList->selectedItems()) {
+        QVariant variant = item->data(Qt::UserRole);
+        CrateId id{variant.value<int>()};
+        m_model.selectedCrates.append(id);
     }
 
     accept();

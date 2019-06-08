@@ -29,7 +29,6 @@ class DlgLibraryExport : public QDialog {
   private slots:
     void exportWholeLibrarySelected();
     void exportSelectedCratedSelected();
-    void crateSelectionChanged();
     void browseExportDirectory();
     void exportRequested();
 
