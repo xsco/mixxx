@@ -20,9 +20,6 @@ class LibraryExporter : public QObject {
             TrackCollection *pTrackCollection,
             AnalysisFeature *pAnalysisFeature);
 
-    virtual ~LibraryExporter() {
-    }
-
   public slots:
     void requestExport();
 
