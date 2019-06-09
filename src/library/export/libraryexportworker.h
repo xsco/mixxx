@@ -5,15 +5,18 @@
 #include <QObject>
 #include <QProgressDialog>
 #include <QTemporaryDir>
-#include <djinterop/enginelibrary.hpp>
-#include <memory>
 
 #include "library/analysisfeature.h"
 #include "library/crate/crateid.h"
 #include "library/export/libraryexportmodel.h"
 #include "library/trackcollection.h"
 #include "track/trackid.h"
+#include "util/memory.h"
 #include "util/parented_ptr.h"
+
+namespace djinterop::enginelibrary {
+class database;
+}
 
 class TrackCollection;
 
@@ -52,7 +55,7 @@ class LibraryExportWorker : public QWidget {
     QList<TrackId> GetTracksIdsInCrate(CrateId crateId);
     QList<TrackId> GetTracksIdsInCrates(const QList<CrateId> &crateIds);
 
-    const LibraryExportModel m_model;
+    LibraryExportModel m_model;
     TrackCollection &m_trackCollection;
     AnalysisFeature &m_analysisFeature;
 
@@ -63,7 +66,6 @@ class LibraryExportWorker : public QWidget {
     QList<CrateId> m_crateIds;
 
     QTemporaryDir m_tempEngineLibraryDir;
-    std::unique_ptr<djinterop::enginelibrary::database> m_pElDb;
     QHash<int, int> m_trackIdToElId;
 };
 

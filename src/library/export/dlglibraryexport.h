@@ -8,6 +8,10 @@
 #include "util/memory.h"
 #include "util/parented_ptr.h"
 
+namespace djinterop::enginelibrary {
+class database;
+}
+
 class TrackCollection;
 
 /**

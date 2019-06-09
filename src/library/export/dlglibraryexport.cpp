@@ -1,3 +1,5 @@
+#include <djinterop/enginelibrary.hpp>
+
 #include "library/export/dlglibraryexport.h"
 
 #include <QStandardPaths>
@@ -115,9 +117,30 @@ void DlgLibraryExport::browseExportDirectory() {
             ConfigValue(baseExportDirectoryStr));
 
     QDir baseExportDirectory{baseExportDirectoryStr};
-    m_model.engineLibraryDir =
-            baseExportDirectory.filePath(LibraryExportModel::EngineLibraryDirName);
-    m_model.musicFilesDir = baseExportDirectory.filePath(LibraryExportModel::MixxxExportDirName);
+    auto engineLibraryDir = baseExportDirectory.filePath(LibraryExportModel::EngineLibraryDirName);
+    auto musicFilesDir = baseExportDirectory.filePath(LibraryExportModel::MixxxExportDirName);
+
+    // Check for presence of any existing EL database.  If there is already one,
+    // prompt for whether to merge into it or not.
+    m_model.pDatabase =
+            std::make_shared<djinterop::enginelibrary::database>(engineLibraryDir.toStdString());
+    if (m_model.pDatabase->exists()) {
+        int ret = QMessageBox::question(this,
+                tr("Merge Into Existing Library?"),
+                tr("There is already an existing library in directory ") +
+                        m_model.engineLibraryDir +
+                        tr("\nIf you proceed, the Mixxx library will be merged into "
+                           "this existing library.  Do you want to merge into the "
+                           "the existing library?"),
+                QMessageBox::Yes | QMessageBox::Cancel,
+                QMessageBox::Cancel);
+        if (ret != QMessageBox::Yes) {
+            return;
+        }
+    }
+
+    m_model.engineLibraryDir = engineLibraryDir;
+    m_model.musicFilesDir = musicFilesDir;
 
     m_pExportDirTextField->setText(baseExportDirectoryStr);
     m_pEngineLibraryDirTextField->setText(m_model.engineLibraryDir);
@@ -126,11 +149,11 @@ void DlgLibraryExport::browseExportDirectory() {
 
 void DlgLibraryExport::exportRequested() {
     // Check a base export directory has been chosen
-    if (m_pExportDirTextField->text().isEmpty()) {
+    if (m_model.pDatabase == nullptr) {
         QMessageBox::information(this,
                 tr("No Export Directory Chosen"),
-                tr("No export directory was chosen.  Please choose a directory "
-                   "in order to export the music library."),
+                tr("No export directory was chosen. Please choose a directory in order to export "
+                   "the music library."),
                 QMessageBox::Ok,
                 QMessageBox::Ok);
         return;

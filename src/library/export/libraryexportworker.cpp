@@ -122,22 +122,6 @@ void LibraryExportWorker::startExport() {
         return;
     }
 
-    // Check for presence of any existing EL database.  If there is already one,
-    // prompt for whether to merge into it or not.
-    m_pElDb = std::make_unique<el::database>(m_model.engineLibraryDir.toStdString());
-    if (m_pElDb->exists()) {
-                tr("There is already an existing library in directory ") +
-                        m_model.engineLibraryDir +
-                           "this existing library.  Do you want to merge into the "
-                           "the existing library?"),
-                QMessageBox::Yes | QMessageBox::Cancel,
-                QMessageBox::Cancel);
-                if (ret != QMessageBox::Yes) {
-                    emit exportCancelled();
-                    return;
-                }
-    }
-
     // Max progress count = no. crates + no. tracks + 2 (start & finish actions)
     int maxSteps = m_trackIds.count() + m_crateIds.count() + 2;
     m_pProgress = make_parented<QProgressDialog>(
@@ -160,13 +144,13 @@ void LibraryExportWorker::setupElDatabase() {
     m_pProgress->setLabelText(tr("Setting up Engine Library database..."));
     m_pProgress->setValue(m_pProgress->value() + 1);
 
-    if (!m_pElDb->exists()) {
+    if (!m_model.pDatabase->exists()) {
         // Create new database.
         // Note that we create in temporary directory and then move over, as
         // SQLite commands appear to be slow when run directly on USB sticks.
         qInfo() << "Creating new empty database in" << m_model.engineLibraryDir;
         m_pProgress->setLabelText(tr("Creating database..."));
-        m_pElDb = std::make_unique<el::database>(std::move(el::create_database(
+        m_model.pDatabase = std::make_shared<el::database>(std::move(el::create_database(
                 m_tempEngineLibraryDir.path().toStdString(), el::version_1_7_1)));
     } else {
         // Copy the DB to our temporary directory whilst exporting.
@@ -250,7 +234,7 @@ QString LibraryExportWorker::copyFile(TrackPointer pTrack) {
 
 void LibraryExportWorker::writeMetadata(TrackPointer pTrack, const QString &dstFilename) {
     auto trackId = pTrack->getId();
-    auto &db = *m_pElDb;
+    auto &db = *m_model.pDatabase;
 
     // Create or update a track record.
     QString trackRelPath = "../";
@@ -380,7 +364,7 @@ void LibraryExportWorker::writeMetadata(TrackPointer pTrack, const QString &dstF
 
 void LibraryExportWorker::exportCurrentCrate() {
     auto &crateId = m_crateIds[m_currCrateIndex];
-    auto &db = *m_pElDb;
+    auto &db = *m_model.pDatabase;
     Crate crate;
     m_trackCollection.crates().readCrateById(crateId, &crate);
     m_pProgress->setLabelText(tr("Exporting crate") + " " + crate.getName());

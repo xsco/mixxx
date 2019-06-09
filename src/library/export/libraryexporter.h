@@ -1,8 +1,6 @@
 #ifndef LIBRARYEXPORTER_H
 #define LIBRARYEXPORTER_H
 
-#include <QString>
-
 #include "library/analysisfeature.h"
 #include "library/export/dlglibraryexport.h"
 #include "library/export/libraryexportworker.h"
@@ -10,6 +8,10 @@
 #include "preferences/usersettings.h"
 #include "util/memory.h"
 #include "util/parented_ptr.h"
+
+namespace djinterop::enginelibrary {
+class database;
+}
 
 // The LibraryExporter class holds both a library export dialog and a library
 // export worker, managing the communication between them and allowing the user
