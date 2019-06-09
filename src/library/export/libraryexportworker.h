@@ -57,7 +57,6 @@ class LibraryExportWorker : public QWidget {
     AnalysisFeature &m_analysisFeature;
 
     parented_ptr<QProgressDialog> m_pProgress;
-    bool m_exportActive;
     int m_numTracksDone;
     int m_currCrateIndex;
     QList<TrackId> m_trackIds;

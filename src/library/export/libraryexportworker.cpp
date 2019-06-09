@@ -86,7 +86,6 @@ LibraryExportWorker::LibraryExportWorker(QWidget *parent,
           m_model{model},
           m_trackCollection{trackCollection},
           m_analysisFeature{analysisFeature},
-          m_exportActive{false},
           m_numTracksDone{0},
           m_currCrateIndex{0} {
     connect(this,
@@ -97,22 +96,9 @@ LibraryExportWorker::LibraryExportWorker(QWidget *parent,
             &LibraryExportWorker::readyForExportCurrentCrate,
             this,
             &LibraryExportWorker::exportCurrentCrate);
-
-    // Only permit one export to be active at any given time.
-    if (m_exportActive) {
-        QMessageBox::information(this,
-                tr("Export Already Active"),
-                tr("There is already a active export taking place.  Please "
-                   "wait for this to finish, or cancel the existing export."),
-                QMessageBox::Ok,
-                QMessageBox::Ok);
-        return;
-    }
 }
 
 void LibraryExportWorker::startExport() {
-    m_exportActive = true;
-
     if (m_model.exportEntireMusicLibrary) {
         qInfo() << "Exporting ENTIRE music library...";
         m_trackIds = GetAllTrackIds();
@@ -198,9 +184,7 @@ void LibraryExportWorker::setupElDatabase() {
 }
 
 void LibraryExportWorker::exportTrack(TrackPointer pTrack) {
-    if (!m_exportActive) {
-        return;
-    } else if (pTrack == nullptr) {
+    if (pTrack == nullptr) {
         qWarning() << "Received null track pointer for export!";
         fail();
         return;
@@ -395,10 +379,6 @@ void LibraryExportWorker::writeMetadata(TrackPointer pTrack, const QString &dstF
 }
 
 void LibraryExportWorker::exportCurrentCrate() {
-    if (!m_exportActive) {
-        return;
-    }
-
     auto &crateId = m_crateIds[m_currCrateIndex];
     auto &db = *m_pElDb;
     Crate crate;
@@ -434,7 +414,6 @@ void LibraryExportWorker::finishExport() {
     copyFilesInDir(m_tempEngineLibraryDir.path(), m_model.engineLibraryDir);
 
     m_pProgress->setValue(m_pProgress->maximum());
-    m_exportActive = false;
     QMessageBox::information(this,
             tr("Export Completed"),
             tr("The Mixxx library has been successfully exported."),
@@ -444,7 +423,6 @@ void LibraryExportWorker::finishExport() {
 }
 
 void LibraryExportWorker::cancel() {
-    m_exportActive = false;
     QMessageBox::information(this,
             tr("Export Aborted"),
             tr("Library export was aborted.  The Mixxx library has "
@@ -455,7 +433,6 @@ void LibraryExportWorker::cancel() {
 }
 
 void LibraryExportWorker::fail() {
-    m_exportActive = false;
     QMessageBox::information(this,
             tr("Export Failed"),
             tr("Library export failed.  The Mixxx library has only been "
