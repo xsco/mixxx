@@ -6,6 +6,8 @@
 
 #include "library/trackcollection.h"
 
+namespace el = djinterop::enginelibrary;
+
 DlgLibraryExport::DlgLibraryExport(
         QWidget *parent, UserSettingsPointer pConfig, TrackCollection &trackCollection)
         : QDialog(parent), m_pConfig{pConfig}, m_trackCollection{trackCollection} {
@@ -21,6 +23,7 @@ DlgLibraryExport::DlgLibraryExport(
         }
     }
 
+    m_pExternalCratesTree = make_parented<QTreeWidget>();
     m_pExportDirTextField = make_parented<QLineEdit>();
     m_pExportDirTextField->setReadOnly(true);
     m_pEngineLibraryDirTextField = make_parented<QLineEdit>();
@@ -74,17 +77,16 @@ DlgLibraryExport::DlgLibraryExport(
 
     auto pButtonBarLayout = make_parented<QHBoxLayout>();
     pButtonBarLayout->addStretch(1);
+    pButtonBarLayout->addWidget(pWholeLibraryRadio);
+    pButtonBarLayout->addWidget(pCratesRadio);
     pButtonBarLayout->addWidget(pExportButton);
     pButtonBarLayout->addWidget(pCancelButton);
 
     auto pLayout = make_parented<QGridLayout>();
-    pLayout->setColumnStretch(0, 1);
-    pLayout->setColumnStretch(1, 2);
-    pLayout->addWidget(pWholeLibraryRadio, 0, 0);
-    pLayout->addWidget(pCratesRadio, 1, 0);
-    pLayout->addWidget(m_pCratesList, 2, 0);
-    pLayout->addLayout(pFormLayout, 0, 1, 3, 1);
-    pLayout->addLayout(pButtonBarLayout, 3, 0, 1, 2);
+    pLayout->addLayout(pFormLayout, 0, 0);
+    pLayout->addLayout(pButtonBarLayout, 1, 0);
+    pLayout->addWidget(m_pCratesList, 0, 1, 2, 1);
+    pLayout->addWidget(m_pExternalCratesTree, 0, 2, 2, 1);
 
     setLayout(pLayout);
     setWindowTitle(tr("Export Library"));
@@ -145,6 +147,38 @@ void DlgLibraryExport::browseExportDirectory() {
     m_pExportDirTextField->setText(baseExportDirectoryStr);
     m_pEngineLibraryDirTextField->setText(m_model.engineLibraryDir);
     m_pMusicFilesDirTextField->setText(m_model.musicFilesDir);
+
+    updateExternalCratesList();
+}
+
+void DlgLibraryExport::updateExternalCratesList() {
+    m_pExternalCratesTree->clear();
+
+    auto &db = *m_model.pDatabase;
+
+    std::unordered_map<int, QTreeWidgetItem *> items;
+    std::vector<std::pair<int, std::unique_ptr<QTreeWidgetItem>>> parentIdsAndChildren;
+
+    for (auto id : el::all_crate_ids(db)) {
+        auto pItem = std::make_unique<QTreeWidgetItem>();
+        items[id] = pItem.get();
+        el::crate crate{db, id};
+        pItem->setText(0, QString::fromStdString(crate.name()));
+        if (crate.has_parent()) {
+            parentIdsAndChildren.emplace_back(crate.parent_id(), std::move(pItem));
+        } else {
+            m_pExternalCratesTree->addTopLevelItem(pItem.release());
+        }
+    }
+
+    for (auto &&edge : parentIdsAndChildren) {
+        auto it = items.find(edge.first);
+        if (it == items.end()) {
+            qWarning() << "Crate had an invalid parent ID.";
+            continue;
+        }
+        it->second->addChild(to_parented(edge.second));
+    }
 }
 
 void DlgLibraryExport::exportRequested() {

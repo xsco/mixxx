@@ -32,6 +32,7 @@ class DlgLibraryExport : public QDialog {
     void exportWholeLibrarySelected();
     void exportSelectedCratedSelected();
     void browseExportDirectory();
+    void updateExternalCratesList();
     void exportRequested();
 
   private:
@@ -40,6 +41,7 @@ class DlgLibraryExport : public QDialog {
     LibraryExportModel m_model;
 
     parented_ptr<QListWidget> m_pCratesList;
+    parented_ptr<QTreeWidget> m_pExternalCratesTree;
     parented_ptr<QLineEdit> m_pExportDirTextField;
     parented_ptr<QLineEdit> m_pEngineLibraryDirTextField;
     parented_ptr<QLineEdit> m_pMusicFilesDirTextField;
