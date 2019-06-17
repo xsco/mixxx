@@ -23,7 +23,7 @@
 #include "effects/builtin/biquadfullkilleqeffect.h"
 #include "effects/builtin/filtereffect.h"
 #include "effects/effectslot.h"
-#include "engine/enginefilterbessel4.h"
+#include "engine/filters/enginefilterbessel4.h"
 #include "control/controlobject.h"
 #include "control/controlproxy.h"
 #include "util/math.h"
@@ -82,7 +82,7 @@ DlgPrefEQ::DlgPrefEQ(QWidget* pParent, EffectsManager* pEffectsManager,
     // Add drop down lists for current decks and connect num_decks control
     // to slotNumDecksChanged
     m_pNumDecks = new ControlProxy("[Master]", "num_decks", this);
-    m_pNumDecks->connectValueChanged(SLOT(slotNumDecksChanged(double)));
+    m_pNumDecks->connectValueChanged(this, &DlgPrefEQ::slotNumDecksChanged);
     slotNumDecksChanged(m_pNumDecks->get());
 
     setUpMasterEQ();
@@ -372,13 +372,13 @@ void DlgPrefEQ::slotResetToDefaults() {
                pCombo->findData(kDefaultQuickEffectId));
     }
     loadSettings();
-    CheckBoxBypass->setChecked(Qt::Unchecked);
-    CheckBoxEqOnly->setChecked(Qt::Checked);
-    CheckBoxSingleEqEffect->setChecked(Qt::Checked);
+    CheckBoxBypass->setChecked(false);
+    CheckBoxEqOnly->setChecked(true);
+    CheckBoxSingleEqEffect->setChecked(true);
     m_bEqAutoReset = false;
-    CheckBoxEqAutoReset->setChecked(Qt::Unchecked);
+    CheckBoxEqAutoReset->setChecked(false);
     m_bGainAutoReset = false;
-    CheckBoxGainAutoReset->setChecked(Qt::Unchecked);
+    CheckBoxGainAutoReset->setChecked(false);
     slotUpdate();
     slotApply();
 }

@@ -1,4 +1,7 @@
 #include "library/export/dlglibraryexport.h"
+
+#include <QStandardPaths>
+
 #include "library/trackcollection.h"
 
 DlgLibraryExport::DlgLibraryExport(
@@ -128,7 +131,7 @@ void DlgLibraryExport::browseExportDirectory()
 {
     QString lastExportDirectory = m_pConfig->getValue(
             ConfigKey("[Library]", "LastLibraryExportDirectory"),
-            QDesktopServices::storageLocation(QDesktopServices::DocumentsLocation));
+            QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation));
     auto baseExportDirectoryStr = QFileDialog::getExistingDirectory(
             NULL, tr("Export Library To"), lastExportDirectory);
     if (baseExportDirectoryStr.isEmpty()) {

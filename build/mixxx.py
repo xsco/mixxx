@@ -46,7 +46,7 @@ class MixxxBuild(object):
             raise Exception("invalid target platform")
 
         if machine.lower() not in ['x86_64', 'x86', 'i686', 'i586',
-                                   'alpha', 'hppa', 'mips', 'mipsel', 's390',
+                                   'alpha', 'hppa', 's390',
                                    'sparc', 'ia64', 'armel', 'armhf', 'hurd-i386',
                                    'armv5tel', 'armv5tejl', 'armv6l', 'armv6hl',
                                    'armv7l', 'armv7hl', 'armv7hnl',
@@ -55,8 +55,11 @@ class MixxxBuild(object):
                                    'i486', 'i386', 'ppc', 'ppc64', 'powerpc',
                                    'powerpc64', 'powerpcspe', 's390x',
                                    'amd64', 'em64t', 'intel64', 'arm64',
-                                   'ppc64el', 'ppc64le', 'm68k', 'mips64',
-                                   'mips64el', 'mipsn32', 'mipsn32el',
+                                   'ppc64el', 'ppc64le', 'm68k', 
+                                   'mips', 'mipsel', 'mipsr6', 'mipsr6el',
+                                   'mips64', 'mips64r6', 'mips64el', 'mips64r6el', 
+                                   'mipsn32', 'mipsn32el', 'mipsn32r6', 'mipsn32r6el',
+                                   'mipsisa32r6', 'mipsisa32r6el', 'mipsisa64r6', 'mipsisa64r6el',
                                    'aarch64']:
             raise Exception("invalid machine type")
 
@@ -142,22 +145,14 @@ class MixxxBuild(object):
             raise Exception(
                 'Cross-compiling on a non-Linux host not currently supported')
 
-        tools = ['default']
+        tools = ['default', 'qt5', 'protoc']
         toolpath = ['#build/']
         extra_arguments = {}
         from . import depends
-        if int(Script.ARGUMENTS.get('qt5', 1)):
-            tools.append('qt5')
-            if self.machine_is_64bit:
-                default_qtdir = depends.Qt.DEFAULT_QT5DIRS64.get(
-                    self.platform, '')
-            else:
-                default_qtdir = depends.Qt.DEFAULT_QT5DIRS32.get(
-                    self.platform, '')
+        if self.machine_is_64bit:
+            default_qtdir = depends.Qt.DEFAULT_QT5DIRS64.get(self.platform, '')
         else:
-            tools.append('qt4')
-            default_qtdir = depends.Qt.DEFAULT_QT4DIRS.get(self.platform, '')
-        tools.append('protoc')
+            default_qtdir = depends.Qt.DEFAULT_QT5DIRS32.get(self.platform, '')
 
         # Try fallback to pkg-config on Linux
         if not os.path.isdir(default_qtdir) and self.platform == 'linux':
@@ -174,18 +169,15 @@ class MixxxBuild(object):
 
         # Validate the specified qtdir exists
         if not os.path.isdir(qtdir):
-            logging.error("QT path (%s) does not exist or QT4 is not installed." % qtdir)
+            logging.error("Qt path (%s) does not exist or Qt is not installed." % qtdir)
             logging.error(
-                "Please specify your QT path by running 'scons qtdir=[path]'")
+                "Please specify your Qt path by running 'scons qtdir=[path]'")
             Script.Exit(1)
-        # And that it doesn't contain qt3
-        elif qtdir.find("qt3") != -1 or qtdir.find("qt/3") != -1:
-            logging.error("Mixxx now requires QT4 instead of QT3 - please use your QT4 path with the qtdir build flag.")
+        # And that it doesn't contain qt3 or qt4
+        elif 'qt3' in qtdir or 'qt/3' in qtdir or 'qt4' in qtdir:
+            logging.error("Mixxx now requires Qt 5. Please set the qtdir build flag to the path to your Qt 5 installation.")
             Script.Exit(1)
         logging.info("Qt path: %s" % qtdir)
-
-        # Previously this wasn't done for OSX, but I'm not sure why
-        # -- rryan 6/8/2011
         extra_arguments['QTDIR'] = qtdir
 
         if self.platform_is_osx:
@@ -219,8 +211,23 @@ class MixxxBuild(object):
         self.read_environment_variables()
 
         # Now that environment variables have been read, we can detect the compiler.
-        self.compiler_is_gcc = 'gcc' in self.env['CC']
-        self.compiler_is_clang = 'clang' in self.env['CC']
+        import subprocess
+        process = subprocess.Popen("%s %s" %(self.env['CC'], '--version'), stdout=subprocess.PIPE, shell=True) # nosec
+        (stdout, stderr) = process.communicate()
+        self.compiler_is_gcc = 'gcc' in stdout.lower()
+        self.compiler_is_clang = 'clang' in stdout.lower()
+
+        # Determine the major compiler version (only GCC)
+        if self.compiler_is_gcc:
+            self.gcc_major_version = None
+            process = subprocess.Popen("%s %s" %(self.env['CC'], '-dumpversion'), stdout=subprocess.PIPE, shell=True) # nosec
+            (stdout, stderr) = process.communicate()
+            gcc_version = stdout
+            # If match is None we don't know the version.
+            if not gcc_version is None:
+                version_split = gcc_version.split('.')
+                if version_split:
+                    self.gcc_major_version = int(version_split[0])
 
         self.virtualize_build_dir()
 
@@ -433,7 +440,7 @@ class MixxxBuild(object):
         vars.Add('prefix', 'Set to your install prefix', '/usr/local')
         vars.Add('virtualize',
                  'Dynamically swap out the build directory when switching Git branches.', 1)
-        vars.Add('qtdir', 'Set to your QT4 directory', '/usr/share/qt4')
+        vars.Add('qtdir', 'Set to your Qt 5 directory', '/usr/share/qt5')
         vars.Add('qt_sqlite_plugin', 'Set to 1 to package the Qt SQLite plugin.'
                  '\n           Set to 0 if SQLite support is compiled into QtSQL.', 0)
         vars.Add('target',

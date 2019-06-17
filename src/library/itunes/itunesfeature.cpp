@@ -1,7 +1,7 @@
 #include <QMessageBox>
 #include <QtDebug>
 #include <QXmlStreamReader>
-#include <QDesktopServices>
+#include <QStandardPaths>
 #include <QFileDialog>
 #include <QMenu>
 #include <QAction>
@@ -266,10 +266,10 @@ void ITunesFeature::onRightClick(const QPoint& globalPos) {
 QString ITunesFeature::getiTunesMusicPath() {
     QString musicFolder;
 #if defined(__APPLE__)
-    musicFolder = QDesktopServices::storageLocation(QDesktopServices::MusicLocation)
+    musicFolder = QStandardPaths::writableLocation(QStandardPaths::MusicLocation)
                   + "/iTunes/iTunes Music Library.xml";
 #elif defined(__WINDOWS__)
-    musicFolder = QDesktopServices::storageLocation(QDesktopServices::MusicLocation)
+    musicFolder = QStandardPaths::writableLocation(QStandardPaths::MusicLocation)
                   + "\\iTunes\\iTunes Music Library.xml";
 #else
     musicFolder = "";
@@ -284,8 +284,7 @@ void ITunesFeature::guessMusicLibraryMountpoint(QXmlStreamReader& xml) {
     // iTunes/Album Artwork
     // iTunes/iTunes Media <- this is the "Music Folder"
     // iTunes/iTunes Music Library.xml <- this location we already knew
-    QByteArray strlocbytes = xml.readElementText().toUtf8();
-    QString music_folder = QUrl::fromEncoded(strlocbytes).toLocalFile();
+    QString music_folder = QUrl(xml.readElementText()).toLocalFile();
 
     QString music_folder_test = music_folder;
     music_folder_test.replace(localhost_token(), "");
@@ -577,8 +576,7 @@ void ITunesFeature::parseTrack(QXmlStreamReader& xml, QSqlQuery& query) {
                     continue;
                 }
                 if (key == kLocation) {
-                    QByteArray strlocbytes = content.toUtf8();
-                    location = QUrl::fromEncoded(strlocbytes).toLocalFile();
+                    location = QUrl(content).toLocalFile();
                     // Replace first part of location with the mixxx iTunes Root
                     // on systems where iTunes installed it only strips //localhost
                     // on iTunes from foreign systems the mount point is replaced

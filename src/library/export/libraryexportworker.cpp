@@ -205,14 +205,11 @@ void LibraryExportWorker::setupElDatabase() {
     // Create the music export directory, if it doesn't already exist.
     QDir().mkpath(m_pModel->musicFilesDir);
 
-    // As each track completes analysis, we will export it.
-    qInfo() << "Scheduling" << m_trackIds.count() << "tracks for analysis...";
-    m_pProgress->setLabelText(tr("Scheduling tracks for analysis..."));
-    connect(m_pAnalysisFeature, SIGNAL(trackFinished(TrackPointer)),
-            this, SLOT(exportTrack(TrackPointer)));
-    connect(m_pProgress.get(), SIGNAL(canceled()),
-            m_pAnalysisFeature, SLOT(stopAnalysis()));
-    emit m_pAnalysisFeature->analyzeTracks(m_trackIds);
+    // Currently we don't schedule tracks for analysis because the AnalysisFeature code changed.
+
+    for (auto trackId : m_trackIds) {
+        exportTrack(m_pTrackCollection->getTrackDAO().getTrack(trackId));
+    }
 }
 
 void LibraryExportWorker::exportTrack(TrackPointer pTrack) {
@@ -361,7 +358,7 @@ void LibraryExportWorker::writeMetadata(
     p.set_hot_cues(std::begin(elHotCues), std::end(elHotCues));
 
     // Set main cue-point.
-    double cuePlayPos = pTrack->getCuePoint();
+    double cuePlayPos = pTrack->getCuePoint().getPosition();
     p.set_default_main_cue_sample_offset(cuePlayPos / 2);
     p.set_adjusted_main_cue_sample_offset(cuePlayPos / 2);
     auto cues = pTrack->getCuePoints();

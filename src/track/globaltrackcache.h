@@ -34,7 +34,7 @@ protected:
 
 class GlobalTrackCacheEntry final {
     // We need to hold two shared pointers, the deletingPtr is
-    // responsible for the lifetime of the Track object itselfe.
+    // responsible for the lifetime of the Track object itself.
     // The second one counts the references outside Mixxx, if it
     // is not longer referenced, the track is saved and evicted
     // from the cache.
@@ -77,6 +77,8 @@ public:
 
     void relocateCachedTracks(
             GlobalTrackCacheRelocator* /*nullable*/ pRelocator) const;
+
+    void purgeTrackId(const TrackId& trackId);
 
     // Enforces the eviction of all cached tracks including invocation
     // of the callback and disables the cache permanently.
@@ -215,6 +217,8 @@ private:
             const TrackPointer& strongPtr,
             TrackRef trackRef,
             TrackId trackId);
+
+    void purgeTrackId(TrackId trackId);
 
     bool evict(Track* plainPtr);
     bool isEvicted(Track* plainPtr) const;
