@@ -1,24 +1,27 @@
-#ifndef LIBRARYEXPORTWORKER_H
-#define LIBRARYEXPORTWORKER_H
+#pragma once
+
+#include <memory>
 
 #include <QList>
-#include <QObject>
-#include <QProgressDialog>
 #include <QTemporaryDir>
+#include <QWidget>
 
-#include "library/analysisfeature.h"
 #include "library/crate/crateid.h"
 #include "library/export/libraryexportmodel.h"
-#include "library/trackcollection.h"
+#include "track/track.h"
 #include "track/trackid.h"
-#include "util/memory.h"
 #include "util/parented_ptr.h"
+
+class QProgressDialog;
 
 namespace djinterop::enginelibrary {
 class database;
 }
 
+class AnalysisFeature;
 class TrackCollection;
+
+namespace mixxx {
 
 class LibraryExportWorker : public QWidget {
     Q_OBJECT
@@ -69,4 +72,4 @@ class LibraryExportWorker : public QWidget {
     QHash<int, int> m_trackIdToElId;
 };
 
-#endif // LIBRARYEXPORTWORKER_H
+} // namespace mixxx

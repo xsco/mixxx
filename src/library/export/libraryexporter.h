@@ -1,17 +1,23 @@
-#ifndef LIBRARYEXPORTER_H
-#define LIBRARYEXPORTER_H
+#pragma once
 
-#include "library/analysisfeature.h"
+#include <memory>
+
+#include <QWidget>
+
 #include "library/export/dlglibraryexport.h"
+#include "library/export/libraryexportmodel.h"
 #include "library/export/libraryexportworker.h"
-#include "library/trackcollection.h"
 #include "preferences/usersettings.h"
-#include "util/memory.h"
 #include "util/parented_ptr.h"
 
 namespace djinterop::enginelibrary {
 class database;
 }
+
+class AnalysisFeature;
+class TrackCollection;
+
+namespace mixxx {
 
 // The LibraryExporter class holds both a library export dialog and a library
 // export worker, managing the communication between them and allowing the user
@@ -39,4 +45,4 @@ class LibraryExporter : public QWidget {
     parented_ptr<LibraryExportWorker> m_pWorker;
 };
 
-#endif // LIBRARYEXPORTER_H
+} // namespace mixxx

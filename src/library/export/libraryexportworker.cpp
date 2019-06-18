@@ -1,17 +1,16 @@
 #include "library/export/libraryexportworker.h"
 
-#include <QDesktopServices>
-#include <QFileDialog>
 #include <QFileInfo>
 #include <QMessageBox>
-#include <QtGlobal>
+#include <QProgressDialog>
 
 #include <djinterop/enginelibrary.hpp>
 
 #include "library/trackcollection.h"
-#include "util/assert.h"
 
 namespace el = djinterop::enginelibrary;
+
+namespace mixxx {
 
 const el::musical_key keyMap[] = {
         el::musical_key::c_major,       // INVALID = 0,
@@ -454,3 +453,5 @@ QList<TrackId> LibraryExportWorker::GetTracksIdsInCrates(const QList<CrateId> &c
     }
     return trackIds;
 }
+
+} // namespace mixxx

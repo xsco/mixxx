@@ -52,7 +52,10 @@ class SkinLoader;
 class SoundManager;
 class VinylControlManager;
 class WMainMenuBar;
+
+namespace mixxx {
 class LibraryExporter;
+} // namespace mixxx
 
 typedef QSharedPointer<SettingsManager> SettingsManagerPointer;
 
@@ -189,7 +192,7 @@ class MixxxMainWindow : public QMainWindow {
     DlgPreferences* m_pPrefDlg;
 
     // Library exporter
-    std::unique_ptr<LibraryExporter> m_pLibraryExporter;
+    std::unique_ptr<mixxx::LibraryExporter> m_pLibraryExporter;
 
     ConfigObject<ConfigValueKbd>* m_pKbdConfig;
     ConfigObject<ConfigValueKbd>* m_pKbdConfigEmpty;

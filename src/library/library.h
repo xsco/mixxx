@@ -33,8 +33,11 @@ class PlaylistFeature;
 class CrateFeature;
 class LibraryControl;
 class KeyboardEventFilter;
-class LibraryExporter;
 class PlayerManager;
+
+namespace mixxx {
+class LibraryExporter;
+} // namespace mixxx
 
 class Library: public QObject,
     public virtual /*implements*/ GlobalTrackCacheSaver {
@@ -92,7 +95,7 @@ class Library: public QObject,
     void setRowHeight(int rowHeight);
     void setEditMedatataSelectedClick(bool enable);
 
-    std::unique_ptr<LibraryExporter> makeLibraryExporter(QWidget *parent);
+    std::unique_ptr<mixxx::LibraryExporter> makeLibraryExporter(QWidget *parent);
 
   public slots:
     void slotShowTrackModel(QAbstractItemModel* model);

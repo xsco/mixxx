@@ -1,12 +1,22 @@
-#include <djinterop/enginelibrary.hpp>
-
 #include "library/export/dlglibraryexport.h"
 
+#include <QFileDialog>
+#include <QFormLayout>
+#include <QGridLayout>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QPushButton>
+#include <QRadioButton>
 #include <QStandardPaths>
 
+#include <djinterop/enginelibrary.hpp>
+
+#include "library/crate/crateid.h"
 #include "library/trackcollection.h"
 
 namespace el = djinterop::enginelibrary;
+
+namespace mixxx {
 
 DlgLibraryExport::DlgLibraryExport(
         QWidget *parent, UserSettingsPointer pConfig, TrackCollection &trackCollection)
@@ -124,8 +134,7 @@ void DlgLibraryExport::browseExportDirectory() {
 
     // Check for presence of any existing EL database.  If there is already one,
     // prompt for whether to merge into it or not.
-    m_model.pDatabase =
-            std::make_shared<djinterop::enginelibrary::database>(engineLibraryDir.toStdString());
+    m_model.pDatabase = std::make_shared<el::database>(engineLibraryDir.toStdString());
     if (m_model.pDatabase->exists()) {
         int ret = QMessageBox::question(this,
                 tr("Merge Into Existing Library?"),
@@ -201,3 +210,5 @@ void DlgLibraryExport::exportRequested() {
 
     startExport(m_model);
 }
+
+} // namespace mixxx

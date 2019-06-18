@@ -1,11 +1,15 @@
-#ifndef DLGLIBRARYEXPORT_H
-#define DLGLIBRARYEXPORT_H
+#pragma once
 
-#include <QtWidgets>
+#include <memory>
+
+#include <QDialog>
+#include <QLineEdit>
+#include <QListWidget>
+#include <QTreeWidget>
+#include <QWidget>
 
 #include "library/export/libraryexportmodel.h"
 #include "preferences/usersettings.h"
-#include "util/memory.h"
 #include "util/parented_ptr.h"
 
 namespace djinterop::enginelibrary {
@@ -14,10 +18,10 @@ class database;
 
 class TrackCollection;
 
-/**
- * The DlgLibraryExport class is a UI window that gathers information from
- * the user about how they would like to export the Mixxx library.
- */
+namespace mixxx {
+
+// The DlgLibraryExport class is a UI window that gathers information from
+// the user about how they would like to export the Mixxx library.
 class DlgLibraryExport : public QDialog {
     Q_OBJECT
 
@@ -47,4 +51,4 @@ class DlgLibraryExport : public QDialog {
     parented_ptr<QLineEdit> m_pMusicFilesDirTextField;
 };
 
-#endif // DLGLIBRARYEXPORT_H
+} // namespace mixxx

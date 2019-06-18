@@ -1,6 +1,10 @@
 #include "library/export/libraryexporter.h"
 
-#include <QtCore>
+#include "library/crate/crateid.h"
+#include "library/export/dlglibraryexport.h"
+#include "library/export/libraryexportworker.h"
+
+namespace mixxx {
 
 LibraryExporter::LibraryExporter(QWidget *parent,
         UserSettingsPointer pConfig,
@@ -14,8 +18,7 @@ LibraryExporter::LibraryExporter(QWidget *parent,
 
 void LibraryExporter::requestExport() {
     if (!m_pDialog) {
-        m_pDialog = make_parented<DlgLibraryExport>(
-                static_cast<QWidget *>(this->parent()), m_pConfig, m_trackCollection);
+        m_pDialog = make_parented<DlgLibraryExport>(this, m_pConfig, m_trackCollection);
         connect(m_pDialog.get(),
                 SIGNAL(startExport(LibraryExportModel)),
                 this,
@@ -30,10 +33,8 @@ void LibraryExporter::requestExport() {
 
 void LibraryExporter::workBegin(LibraryExportModel model) {
     if (!m_pWorker) {
-        m_pWorker = make_parented<LibraryExportWorker>(static_cast<QWidget *>(this->parent()),
-                model,
-                m_trackCollection,
-                m_analysisFeature);
+        m_pWorker = make_parented<LibraryExportWorker>(
+                this, model, m_trackCollection, m_analysisFeature);
         connect(m_pWorker.get(), SIGNAL(exportFinished()), m_pDialog.get(), SLOT(accept()));
         connect(m_pWorker.get(), SIGNAL(exportFinished()), this, SLOT(workEnd()));
         connect(m_pWorker.get(), SIGNAL(exportCancelled()), this, SLOT(workEnd()));
@@ -48,3 +49,5 @@ void LibraryExporter::workEnd() {
     qWarning() << "workEnd";
     m_pWorker = nullptr;
 }
+
+} // namespace mixxx

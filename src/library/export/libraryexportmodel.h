@@ -1,8 +1,10 @@
-#ifndef LIBRARYEXPORTMODEL_H
-#define LIBRARYEXPORTMODEL_H
+#pragma once
+
+#include <memory>
 
 #include <QList>
 #include <QString>
+
 #include <djinterop/enginelibrary.hpp>
 
 #include "library/crate/crateid.h"
@@ -10,6 +12,8 @@
 namespace djinterop::enginelibrary {
 class database;
 }
+
+namespace mixxx {
 
 struct LibraryExportModel {
     static const QString EngineLibraryDirName;
@@ -22,4 +26,4 @@ struct LibraryExportModel {
     QList<CrateId> selectedCrates;
 };
 
-#endif // LIBRARYEXPORTMODEL_H
+} // namespace mixxx
