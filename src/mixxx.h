@@ -22,15 +22,16 @@
 #include <QSharedPointer>
 #include <QString>
 
+#include "jobs/qtjobscheduler.h"
 #include "preferences/configobject.h"
-#include "preferences/usersettings.h"
 #include "preferences/constants.h"
+#include "preferences/usersettings.h"
+#include "soundio/sounddeviceerror.h"
 #include "track/track.h"
 #include "util/cmdlineargs.h"
-#include "util/timer.h"
 #include "util/db/dbconnectionpool.h"
 #include "util/memory.h"
-#include "soundio/sounddeviceerror.h"
+#include "util/timer.h"
 
 class ChannelHandleFactory;
 class ControlPushButton;
@@ -140,6 +141,8 @@ class MixxxMainWindow : public QMainWindow {
     QDialog::DialogCode soundDeviceErrorMsgDlg(
             SoundDeviceError err, bool* retryClicked);
     QDialog::DialogCode noOutputDlg(bool* continueClicked);
+
+    std::shared_ptr<mixxx::JobScheduler> m_pScheduler = std::make_shared<mixxx::QtJobScheduler>();
 
     // Pointer to the root GUI widget
     QWidget* m_pWidgetParent;

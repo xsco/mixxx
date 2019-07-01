@@ -897,6 +897,9 @@ class MixxxCore(Feature):
                    "src/mixxxapplication.cpp",
                    "src/errordialoghandler.cpp",
 
+                   "src/jobs/jobscheduler.cpp",
+                   "src/jobs/qtjobscheduler.cpp",
+
                    "src/sources/audiosource.cpp",
                    "src/sources/audiosourcestereoproxy.cpp",
                    "src/sources/metadatasourcetaglib.cpp",
@@ -1255,7 +1258,8 @@ class MixxxCore(Feature):
                    "src/util/widgetrendertimer.cpp",
                    "src/util/workerthread.cpp",
                    "src/util/workerthreadscheduler.cpp",
-                   "src/util/color/predefinedcolor.cpp"
+                   "src/util/color/predefinedcolor.cpp",
+                   "src/util/threadjoiner.cpp"
                    ]
 
         proto_args = {
