@@ -6,8 +6,8 @@
 #include <QTemporaryDir>
 #include <QWidget>
 
+#include "djinterop/djinteropexport.h"
 #include "library/crate/crateid.h"
-#include "library/export/libraryexportmodel.h"
 #include "track/track.h"
 #include "track/trackid.h"
 #include "util/parented_ptr.h"
@@ -27,7 +27,7 @@ class LibraryExportWorker : public QWidget {
     Q_OBJECT
   public:
     LibraryExportWorker(QWidget *parent,
-            LibraryExportModel model,
+            DjinteropExportModel model,
             TrackCollection &trackCollection,
             AnalysisFeature &analysisFeature);
 
@@ -58,7 +58,7 @@ class LibraryExportWorker : public QWidget {
     QList<TrackId> GetTracksIdsInCrate(CrateId crateId);
     QList<TrackId> GetTracksIdsInCrates(const QList<CrateId> &crateIds);
 
-    LibraryExportModel m_model;
+    DjinteropExportModel m_model;
     TrackCollection &m_trackCollection;
     AnalysisFeature &m_analysisFeature;
 

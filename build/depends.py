@@ -730,6 +730,8 @@ class MixxxCore(Feature):
                    "src/dialog/dlgabout.cpp",
                    "src/dialog/dlgdevelopertools.cpp",
 
+                   "src/djinterop/djinteropexport.cpp",
+
                    "src/preferences/configobject.cpp",
                    "src/preferences/dialog/dlgprefautodj.cpp",
                    "src/preferences/dialog/dlgprefdeck.cpp",
@@ -1024,13 +1026,11 @@ class MixxxCore(Feature):
                    "src/library/browse/browsefeature.cpp",
                    "src/library/browse/foldertreemodel.cpp",
 
+                   "src/library/export/dlglibraryexport.cpp",
+                   "src/library/export/libraryexporter.cpp",
                    "src/library/export/trackexportdlg.cpp",
                    "src/library/export/trackexportwizard.cpp",
                    "src/library/export/trackexportworker.cpp",
-                   "src/library/export/libraryexporter.cpp",
-                   "src/library/export/libraryexportworker.cpp",
-                   "src/library/export/libraryexportmodel.cpp",
-                   "src/library/export/dlglibraryexport.cpp",
 
                    "src/library/recording/recordingfeature.cpp",
                    "src/library/recording/dlgrecording.cpp",

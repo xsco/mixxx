@@ -78,7 +78,7 @@ static el::musical_key convertKey(mixxx::track::io::key::ChromaticKey key) {
 }
 
 LibraryExportWorker::LibraryExportWorker(QWidget *parent,
-        LibraryExportModel model,
+        DjinteropExportModel model,
         TrackCollection &trackCollection,
         AnalysisFeature &analysisFeature)
         : QWidget{parent},
@@ -237,7 +237,7 @@ void LibraryExportWorker::writeMetadata(TrackPointer pTrack, const QString &dstF
 
     // Create or update a track record.
     QString trackRelPath = "../";
-    trackRelPath = trackRelPath + LibraryExportModel::MixxxExportDirName + "/" + dstFilename;
+    trackRelPath = trackRelPath + DjinteropExportModel::MixxxExportDirName + "/" + dstFilename;
     el::track t = createOrLoadTrack(db, trackRelPath);
     t.set_track_number(pTrack->getTrackNumber().toInt());
     t.set_duration(std::chrono::seconds{pTrack->getDurationInt()});

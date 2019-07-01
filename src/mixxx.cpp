@@ -451,7 +451,7 @@ void MixxxMainWindow::initialize(QApplication* pApp, const CmdlineArgs& args) {
     m_pPrefDlg->setHidden(true);
 
     // Initialise library exporter
-    m_pLibraryExporter = m_pLibrary->makeLibraryExporter(this);
+    m_pLibraryExporter = m_pLibrary->makeLibraryExporter(this, m_pScheduler);
 
     launchProgress(60);
 

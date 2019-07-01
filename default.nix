@@ -41,12 +41,12 @@ let inherit (nixroot) stdenv pkgs lib
 
   libdjinterop = stdenv.mkDerivation {
     name = "libdjinterop";
-    version = "2019-06-06";
+    version = "2019-06-27";
     src = fetchFromGitHub {
-      owner = "xsco";
+      owner = "haslersn";
       repo = "libdjinterop";
-      rev = "9fb3601ec1e8b023785eea7862564e369c0e3345";
-      sha256 = "0kbsig8ycxch0isq8rq1gphq3x6fxzphhc03imyn6h8312dipr9q";
+      rev = "e799f52be1281b6f27f418d139cfc9f93a3c261a";
+      sha256 = "1rf623jb15i5csi8fzsqkyjhmn23945vxhxhdqqdb99mgqc0cg65";
     };
     nativeBuildInputs = [
       meson
@@ -109,6 +109,7 @@ in stdenv.mkDerivation rec {
     libusb1 libvorbis libebur128 pkgconfig portaudio portmidi protobuf qt5.full
     rubberband scons sqlite taglib soundtouch vamp.vampSDK opusfile upower hidapi
     ccache git glib x11 libGLU lilv lame lv2 makeWrapper qt5.qtbase
+    boost
     libdjinterop
   ];
 

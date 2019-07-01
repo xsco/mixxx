@@ -8,7 +8,10 @@
 #include <QTreeWidget>
 #include <QWidget>
 
-#include "library/export/libraryexportmodel.h"
+#include <boost/optional.hpp>
+#include <djinterop/enginelibrary.hpp>
+
+#include "djinterop/djinteropexport.h"
 #include "preferences/usersettings.h"
 #include "util/parented_ptr.h"
 
@@ -30,7 +33,7 @@ class DlgLibraryExport : public QDialog {
             QWidget* parent, UserSettingsPointer pConfig, TrackCollection& trackCollection);
 
   signals:
-    void startExport(LibraryExportModel) const;
+    void startExport(DjinteropExportModel) const;
 
   private slots:
     void exportWholeLibrarySelected();
@@ -42,13 +45,13 @@ class DlgLibraryExport : public QDialog {
   private:
     UserSettingsPointer m_pConfig;
     TrackCollection& m_trackCollection;
-    LibraryExportModel m_model;
+    boost::optional<djinterop::enginelibrary::database> m_database;
 
     parented_ptr<QListWidget> m_pCratesList;
     parented_ptr<QTreeWidget> m_pExternalCratesTree;
-    parented_ptr<QLineEdit> m_pExportDirTextField;
-    parented_ptr<QLineEdit> m_pEngineLibraryDirTextField;
-    parented_ptr<QLineEdit> m_pMusicFilesDirTextField;
+    parented_ptr<QLineEdit> m_pBaseDirectoryTextField;
+    parented_ptr<QLineEdit> m_pDatabaseDirectoryTextField;
+    parented_ptr<QLineEdit> m_pMusicDirectoryTextField;
 };
 
 } // namespace mixxx
