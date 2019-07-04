@@ -20,13 +20,13 @@ Inserter insertMappingsForCrate(
     return inserter;
 }
 
-std::string exportFile(const DjinteropExportModel::TrackMapping& mapping,
+std::string exportFile(TrackPointer pTrack,
+        djinterop::crate externalCrate,
         const boost::optional<std::string>& musicDirectory) {
-    QDir dbDirectory{QString::fromStdString(mapping.externalCrate.db().directory())};
+    QDir dbDirectory{QString::fromStdString(externalCrate.db().directory())};
     if (!dbDirectory.exists()) {
         // TODO (haslersn): Throw something
     }
-    auto pTrack = mapping.trackCollection.getTrackDAO().getTrack(mapping.trackId);
     QFileInfo srcFileInfo = pTrack->getFileInfo();
     if (!musicDirectory) {
         return dbDirectory.relativeFilePath(srcFileInfo.filePath()).toStdString();
@@ -48,7 +48,8 @@ std::string exportFile(const DjinteropExportModel::TrackMapping& mapping,
     return dbDirectory.relativeFilePath(dstPath).toStdString();
 }
 
-djinterop::track getTrackByRelativePath(djinterop::database database, const std::string& relativePath) {
+djinterop::track getTrackByRelativePath(
+        djinterop::database database, const std::string& relativePath) {
     auto trackCandidates = database.tracks_by_relative_path(relativePath);
     switch (trackCandidates.size()) {
     case 0:
@@ -94,9 +95,8 @@ boost::optional<djinterop::musical_key> toDjinteropKey(mixxx::track::io::key::Ch
 }
 
 void exportMetadata(
-        const DjinteropExportModel::TrackMapping& mapping, const std::string& relativePath) {
-    auto pTrack = mapping.trackCollection.getTrackDAO().getTrack(mapping.trackId);
-    auto db = mapping.externalCrate.db();
+        TrackPointer pTrack, djinterop::crate externalCrate, const std::string& relativePath) {
+    auto db = externalCrate.db();
     auto externalTrack = getTrackByRelativePath(db, relativePath);
     externalTrack.set_track_number(pTrack->getTrackNumber().toInt());
     externalTrack.set_bpm(pTrack->getBpm());
@@ -115,7 +115,7 @@ void exportMetadata(
     externalTrack.set_bitrate(pTrack->getBitrate());
     // TODO (haslersn): Should we set the import info?
 
-    mapping.externalCrate.add_track(externalTrack);
+    externalCrate.add_track(externalTrack);
 
     // Frames used interchangeably with "samples" here.
     auto sampleCount = static_cast<int64_t>(pTrack->getDuration() * pTrack->getSampleRate());
@@ -163,10 +163,16 @@ void exportMetadata(
     }
 }
 
-void exportTrack(const DjinteropExportModel::TrackMapping& mapping,
+void exportTrack(JobScheduler::Connection con,
+        const DjinteropExportModel::TrackMapping& mapping,
         const boost::optional<std::string>& musicDirectory) {
-    auto relativePath = exportFile(mapping, musicDirectory);
-    exportMetadata(mapping, relativePath);
+    TrackPointer pTrack =
+            con.runSync([&]() {
+                   return mapping.trackCollection.getTrackDAO().getTrack(mapping.trackId);
+               })
+                    .get();
+    auto relativePath = exportFile(pTrack, mapping.externalCrate, musicDirectory);
+    exportMetadata(pTrack, mapping.externalCrate, relativePath);
 }
 
 } // namespace
@@ -174,8 +180,7 @@ void exportTrack(const DjinteropExportModel::TrackMapping& mapping,
 const std::string DjinteropExportModel::EngineLibraryFolder = "Engine Library";
 const std::string DjinteropExportModel::CanonicalMusicFolder = "mixxx-export";
 
-DjinteropExportJob::DjinteropExportJob(DjinteropExportModel model)
-        : m_model{std::move(model)} {
+DjinteropExportJob::DjinteropExportJob(DjinteropExportModel model) : m_model{std::move(model)} {
 }
 
 void DjinteropExportJob::operator()(JobScheduler::Connection con) const {
@@ -193,7 +198,7 @@ void DjinteropExportJob::operator()(JobScheduler::Connection con) const {
             std::cout << "DjinteropExportJob cancelled\n";
             return;
         }
-        exportTrack(trackMapping, m_model.musicDirectory);
+        exportTrack(con, trackMapping, m_model.musicDirectory);
         ++tracksDone;
         con.setProgress(static_cast<int32_t>(tracksDone / tracksAsDouble));
     }
