@@ -4,7 +4,7 @@
 #include <QMessageBox>
 #include <QProgressDialog>
 
-#include <djinterop/enginelibrary.hpp>
+#include <djinterop/djinterop.hpp>
 
 #include "library/trackcollection.h"
 

@@ -730,7 +730,7 @@ class MixxxCore(Feature):
                    "src/dialog/dlgabout.cpp",
                    "src/dialog/dlgdevelopertools.cpp",
 
-                   "src/djinterop/djinteropexport.cpp",
+                   "src/interop/djinteropexport.cpp",
 
                    "src/preferences/configobject.cpp",
                    "src/preferences/dialog/dlgprefautodj.cpp",

@@ -1,4 +1,4 @@
-#include "djinterop/djinteropexport.h"
+#include "interop/djinteropexport.h"
 
 #include <iostream>
 
@@ -48,7 +48,7 @@ std::string exportFile(const DjinteropExportModel::TrackMapping& mapping,
     return dbDirectory.relativeFilePath(dstPath).toStdString();
 }
 
-el::track getTrackByRelativePath(el::database database, const std::string& relativePath) {
+djinterop::track getTrackByRelativePath(djinterop::database database, const std::string& relativePath) {
     auto trackCandidates = database.tracks_by_relative_path(relativePath);
     switch (trackCandidates.size()) {
     case 0:
@@ -61,33 +61,33 @@ el::track getTrackByRelativePath(el::database database, const std::string& relat
     }
 }
 
-boost::optional<el::musical_key> toDjinteropKey(mixxx::track::io::key::ChromaticKey key) {
-    static const std::array<boost::optional<el::musical_key>, 25> keyMap{
-            boost::none,                    // INVALID = 0,
-            el::musical_key::c_major,       // C_MAJOR = 1,
-            el::musical_key::d_flat_major,  // D_FLAT_MAJOR = 2,
-            el::musical_key::d_major,       // D_MAJOR = 3,
-            el::musical_key::e_flat_major,  // E_FLAT_MAJOR = 4,
-            el::musical_key::e_major,       // E_MAJOR = 5,
-            el::musical_key::f_major,       // F_MAJOR = 6,
-            el::musical_key::f_sharp_major, // F_SHARP_MAJOR = 7,
-            el::musical_key::g_major,       // G_MAJOR = 8,
-            el::musical_key::a_flat_major,  // A_FLAT_MAJOR = 9,
-            el::musical_key::a_major,       // A_MAJOR = 10,
-            el::musical_key::b_flat_major,  // B_FLAT_MAJOR = 11,
-            el::musical_key::b_major,       // B_MAJOR = 12,
-            el::musical_key::c_minor,       // C_MINOR = 13,
-            el::musical_key::d_flat_minor,  // C_SHARP_MINOR = 14,
-            el::musical_key::d_minor,       // D_MINOR = 15,
-            el::musical_key::e_flat_minor,  // E_FLAT_MINOR = 16,
-            el::musical_key::e_minor,       // E_MINOR = 17,
-            el::musical_key::f_minor,       // F_MINOR = 18,
-            el::musical_key::f_sharp_minor, // F_SHARP_MINOR = 19,
-            el::musical_key::g_minor,       // G_MINOR = 20,
-            el::musical_key::a_flat_minor,  // G_SHARP_MINOR = 21,
-            el::musical_key::a_minor,       // A_MINOR = 22,
-            el::musical_key::b_flat_minor,  // B_FLAT_MINOR = 23,
-            el::musical_key::b_minor,       // B_MINOR = 24
+boost::optional<djinterop::musical_key> toDjinteropKey(mixxx::track::io::key::ChromaticKey key) {
+    static const std::array<boost::optional<djinterop::musical_key>, 25> keyMap{
+            boost::none,                           // INVALID = 0,
+            djinterop::musical_key::c_major,       // C_MAJOR = 1,
+            djinterop::musical_key::d_flat_major,  // D_FLAT_MAJOR = 2,
+            djinterop::musical_key::d_major,       // D_MAJOR = 3,
+            djinterop::musical_key::e_flat_major,  // E_FLAT_MAJOR = 4,
+            djinterop::musical_key::e_major,       // E_MAJOR = 5,
+            djinterop::musical_key::f_major,       // F_MAJOR = 6,
+            djinterop::musical_key::f_sharp_major, // F_SHARP_MAJOR = 7,
+            djinterop::musical_key::g_major,       // G_MAJOR = 8,
+            djinterop::musical_key::a_flat_major,  // A_FLAT_MAJOR = 9,
+            djinterop::musical_key::a_major,       // A_MAJOR = 10,
+            djinterop::musical_key::b_flat_major,  // B_FLAT_MAJOR = 11,
+            djinterop::musical_key::b_major,       // B_MAJOR = 12,
+            djinterop::musical_key::c_minor,       // C_MINOR = 13,
+            djinterop::musical_key::d_flat_minor,  // C_SHARP_MINOR = 14,
+            djinterop::musical_key::d_minor,       // D_MINOR = 15,
+            djinterop::musical_key::e_flat_minor,  // E_FLAT_MINOR = 16,
+            djinterop::musical_key::e_minor,       // E_MINOR = 17,
+            djinterop::musical_key::f_minor,       // F_MINOR = 18,
+            djinterop::musical_key::f_sharp_minor, // F_SHARP_MINOR = 19,
+            djinterop::musical_key::g_minor,       // G_MINOR = 20,
+            djinterop::musical_key::a_flat_minor,  // G_SHARP_MINOR = 21,
+            djinterop::musical_key::a_minor,       // A_MINOR = 22,
+            djinterop::musical_key::b_flat_minor,  // B_FLAT_MINOR = 23,
+            djinterop::musical_key::b_minor,       // B_MINOR = 24
     };
 
     return keyMap[key];
@@ -118,7 +118,7 @@ void exportMetadata(
     mapping.externalCrate.add_track(externalTrack);
 
     // Frames used interchangeably with "samples" here.
-    double sampleCount = pTrack->getDuration() * pTrack->getSampleRate();
+    auto sampleCount = static_cast<int64_t>(pTrack->getDuration() * pTrack->getSampleRate());
     externalTrack.set_sampling({static_cast<double>(pTrack->getSampleRate()), sampleCount});
 
     // externalTrack.set_average_loudness(...); TODO - set average loudness
@@ -131,7 +131,7 @@ void exportMetadata(
         double firstBeatPlayPos = beats->findNextBeat(0);
         double lastBeatPlayPos = beats->findPrevBeat(sampleCount * 2);
         int numBeats = beats->numBeatsInRange(firstBeatPlayPos, lastBeatPlayPos);
-        std::vector<el::beatgrid_marker> beatgrid{
+        std::vector<djinterop::beatgrid_marker> beatgrid{
                 {0, firstBeatPlayPos / 2}, {numBeats, lastBeatPlayPos / 2}};
         beatgrid = el::normalize_beatgrid(std::move(beatgrid), sampleCount);
         externalTrack.set_default_beatgrid(beatgrid);
@@ -151,7 +151,7 @@ void exportMetadata(
     auto waveform = pTrack->getWaveform();
     if (waveform != nullptr) {
         int64_t externalWaveformSize = externalTrack.recommended_waveform_size();
-        std::vector<el::waveform_entry> externalWaveform;
+        std::vector<djinterop::waveform_entry> externalWaveform;
         externalWaveform.reserve(externalWaveformSize);
         for (int64_t i = 0; i < externalWaveformSize; ++i) {
             auto j = waveform->getDataSize() * i / externalWaveformSize;
@@ -174,7 +174,8 @@ void exportTrack(const DjinteropExportModel::TrackMapping& mapping,
 const std::string DjinteropExportModel::EngineLibraryFolder = "Engine Library";
 const std::string DjinteropExportModel::CanonicalMusicFolder = "mixxx-export";
 
-DjinteropExportJob::DjinteropExportJob(DjinteropExportModel model) : m_model{std::move(model)} {
+DjinteropExportJob::DjinteropExportJob(DjinteropExportModel model)
+        : m_model{std::move(model)} {
 }
 
 void DjinteropExportJob::operator()(JobScheduler::Connection con) const {

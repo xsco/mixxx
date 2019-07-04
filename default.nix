@@ -45,8 +45,8 @@ let inherit (nixroot) stdenv pkgs lib
     src = fetchFromGitHub {
       owner = "haslersn";
       repo = "libdjinterop";
-      rev = "e799f52be1281b6f27f418d139cfc9f93a3c261a";
-      sha256 = "1rf623jb15i5csi8fzsqkyjhmn23945vxhxhdqqdb99mgqc0cg65";
+      rev = "563886cd8a50dc25872eb015f0d33b96687577f3";
+      sha256 = "03w7z0587p8pvzh64qgjbjv2pbjd78f74pjyhdjk2x150ljgs61z";
     };
     nativeBuildInputs = [
       meson

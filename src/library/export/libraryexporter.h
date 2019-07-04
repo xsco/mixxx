@@ -4,7 +4,7 @@
 
 #include <QWidget>
 
-#include "djinterop/djinteropexport.h"
+#include "interop/djinteropexport.h"
 #include "jobs/jobscheduler.h"
 #include "library/export/dlglibraryexport.h"
 #include "library/export/libraryexportworker.h"

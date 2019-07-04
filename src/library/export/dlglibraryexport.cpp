@@ -153,7 +153,7 @@ void DlgLibraryExport::updateExternalCratesList() {
         return;
     }
 
-    std::unordered_map<int, QTreeWidgetItem *> items;
+    std::unordered_map<int, QTreeWidgetItem*> items;
     std::vector<std::pair<int, std::unique_ptr<QTreeWidgetItem>>> parentIdsAndChildren;
 
     for (auto crate : m_database->crates()) {
@@ -179,7 +179,7 @@ void DlgLibraryExport::updateExternalCratesList() {
 
 namespace {
 
-el::crate createOrLoadCrate(const el::database& database, const std::string& name) {
+djinterop::crate createOrLoadCrate(const djinterop::database& database, const std::string& name) {
     auto crateCandidates = database.crates_by_name(name);
     crateCandidates.erase(
             std::remove_if(crateCandidates.begin(),
@@ -217,7 +217,7 @@ void DlgLibraryExport::exportRequested() {
     DjinteropExportModel model;
     model.musicDirectory = m_pMusicDirectoryTextField->text().toStdString();
 
-    for (auto *pItem : m_pCratesList->selectedItems()) {
+    for (auto* pItem : m_pCratesList->selectedItems()) {
         CrateId id{pItem->data(Qt::UserRole).value<int>()};
         Crate crate;
         m_trackCollection.crates().readCrateById(id, &crate);

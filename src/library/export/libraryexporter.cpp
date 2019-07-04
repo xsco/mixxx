@@ -1,6 +1,6 @@
 #include "library/export/libraryexporter.h"
 
-#include "djinterop/djinteropexport.h"
+#include "interop/djinteropexport.h"
 #include "library/crate/crateid.h"
 
 namespace mixxx {

@@ -3,7 +3,7 @@
 #include <memory>
 
 #include <boost/optional.hpp>
-#include <djinterop/enginelibrary.hpp>
+#include <djinterop/djinterop.hpp>
 
 #include "jobs/jobscheduler.h"
 #include "library/crate/crate.h"
@@ -17,9 +17,8 @@ struct DjinteropExportModel {
     static const std::string CanonicalMusicFolder;
 
     struct TrackMapping {
-        TrackMapping(TrackCollection& trackCollection,
-                TrackId trackId,
-                djinterop::enginelibrary::crate externalCrate)
+        TrackMapping(
+                TrackCollection& trackCollection, TrackId trackId, djinterop::crate externalCrate)
                 : trackCollection{trackCollection},
                   trackId{std::move(trackId)},
                   externalCrate{std::move(externalCrate)} {
@@ -27,13 +26,12 @@ struct DjinteropExportModel {
 
         TrackCollection& trackCollection;
         TrackId trackId;
-        djinterop::enginelibrary::crate externalCrate;
+        djinterop::crate externalCrate;
     };
 
     struct CrateMapping {
-        CrateMapping(TrackCollection& trackCollection,
-                CrateId crateId,
-                djinterop::enginelibrary::crate externalCrate)
+        CrateMapping(
+                TrackCollection& trackCollection, CrateId crateId, djinterop::crate externalCrate)
                 : trackCollection{trackCollection},
                   crateId{std::move(crateId)},
                   externalCrate{std::move(externalCrate)} {
@@ -41,7 +39,7 @@ struct DjinteropExportModel {
 
         TrackCollection& trackCollection;
         CrateId crateId;
-        djinterop::enginelibrary::crate externalCrate;
+        djinterop::crate externalCrate;
     };
 
     // If given, then the music should be copied to `*musicDirectory`, which must be set relative to

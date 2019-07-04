@@ -6,7 +6,7 @@
 #include <QTemporaryDir>
 #include <QWidget>
 
-#include "djinterop/djinteropexport.h"
+#include "interop/djinteropexport.h"
 #include "library/crate/crateid.h"
 #include "track/track.h"
 #include "track/trackid.h"

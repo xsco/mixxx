@@ -9,9 +9,9 @@
 #include <QWidget>
 
 #include <boost/optional.hpp>
-#include <djinterop/enginelibrary.hpp>
+#include <djinterop/djinterop.hpp>
 
-#include "djinterop/djinteropexport.h"
+#include "interop/djinteropexport.h"
 #include "preferences/usersettings.h"
 #include "util/parented_ptr.h"
 
@@ -45,7 +45,7 @@ class DlgLibraryExport : public QDialog {
   private:
     UserSettingsPointer m_pConfig;
     TrackCollection& m_trackCollection;
-    boost::optional<djinterop::enginelibrary::database> m_database;
+    boost::optional<djinterop::database> m_database;
 
     parented_ptr<QListWidget> m_pCratesList;
     parented_ptr<QTreeWidget> m_pExternalCratesTree;
