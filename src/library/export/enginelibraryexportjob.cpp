@@ -67,7 +67,6 @@ std::string exportFile(const EngineLibraryExportRequest& request,
     auto dstPath = request.musicFilesDir.filePath(QString::fromStdString(dstFilename));
     if (!QFile::exists(dstPath) || srcFileInfo.fileLastModified() > QFileInfo{dstPath}.lastModified()) {
         auto srcPath = srcFileInfo.location();
-        std::cout << "Copying " << srcPath.toStdString() << " to " << dstPath.toStdString() << '\n';
         QFile::copy(srcPath, dstPath);
     }
 
@@ -95,7 +94,7 @@ void exportMetadata(djinterop::database &db,
     // the music file.  We will record the mapping from Mixxx track id to EL
     // track id as well.
     auto externalTrack = getTrackByRelativePath(db, relativePath);
-    mixxxToEngineLibraryTrackIdMap[pTrack->getId()] = externalTrack.id();
+    mixxxToEngineLibraryTrackIdMap.insert(pTrack->getId(), externalTrack.id());
 
     // Note that the Engine Library format has the scope for recording meta-data
     // about whteher track was imported from an external database.  However,
@@ -112,9 +111,10 @@ void exportMetadata(djinterop::database &db,
     externalTrack.set_comment(pTrack->getComment().toStdString());
     externalTrack.set_composer(pTrack->getComposer().toStdString());
     externalTrack.set_key(toDjinteropKey(pTrack->getKey()));
-    externalTrack.set_relative_path(relativePath);
+    int64_t lastModifiedMillisSinceEpoch =
+        pTrack->getFileInfo().fileLastModified().toMSecsSinceEpoch();
     std::chrono::system_clock::time_point lastModifiedAt{
-            std::chrono::milliseconds{pTrack->getFileInfo().fileLastModified().toMSecsSinceEpoch()}};
+            std::chrono::milliseconds{lastModifiedMillisSinceEpoch}};
     externalTrack.set_last_modified_at(lastModifiedAt);
     externalTrack.set_bitrate(pTrack->getBitrate());
 
@@ -141,13 +141,44 @@ void exportMetadata(djinterop::database &db,
     }
 
     auto cues = pTrack->getCuePoints();
-    // externalTrack.set_hot_cues(...); TODO - fill in cues
-    // externalTrack.set_loops(...); TODO - fill in loops
+    for (const CuePointer &pCue : cues) {
+        // We are only interested in hot cues.
+        if (pCue.get() == nullptr || pCue->getType() != Cue::CUE) {
+            continue;
+        }
 
+        int hot_cue_index = pCue->getHotCue(); // Note: Mixxx uses 0-based.
+        if (hot_cue_index < 0 || hot_cue_index >= 8) {
+            // EL only supports a maximum of 8 hot cues.
+            qInfo() << "Skipping hot cue" << hot_cue_index
+                << "as the Engine Library format only supports at most 8"
+                << "hot cues.";
+            continue;
+        }
+
+        QString label = pCue->getLabel();
+        if (label == "") {
+            label = QString("Cue %1").arg(hot_cue_index + 1);
+        }
+
+        djinterop::hot_cue hc{};
+        hc.label = label.toStdString();
+        hc.sample_offset = pCue->getPosition() / 2; // Convert "play pos".
+        hc.color = el::standard_pad_colors::pads[hot_cue_index];
+        externalTrack.set_hot_cue_at(hot_cue_index, hc);
+    }
+    
     // Set main cue-point.
     double cuePlayPos = pTrack->getCuePoint().getPosition();
     externalTrack.set_default_main_cue(cuePlayPos / 2);
     externalTrack.set_adjusted_main_cue(cuePlayPos / 2);
+
+    // Note that Mixxx does not support pre-calculated stored loops, but it will
+    // remember the position of a single ad-hoc loop between track loads.
+    // However, since this single ad-hoc loop is likely to be different in use
+    // from a set of stored loops (and is easily overwritten), we do not export
+    // it to the Engine Library database here.
+    externalTrack.set_loops({});
 
     // Write high-resolution full waveform
     auto waveform = pTrack->getWaveform();
@@ -163,6 +194,8 @@ void exportMetadata(djinterop::database &db,
         }
         externalTrack.set_waveform(std::move(externalWaveform));
     }
+
+    qInfo() << "Wrote all meta-data for track";
 }
 
 void exportTrack(JobScheduler::Connection conn,
@@ -170,7 +203,8 @@ void exportTrack(JobScheduler::Connection conn,
         const EngineLibraryExportRequest& request, djinterop::database &db,
         QHash<TrackId, int64_t>& mixxxToEngineLibraryTrackIdMap,
         const TrackId& trackId) {
-    // TODO (mrsmidge) - schedule for analysis, await completion
+    // TODO (mrsmidge) - schedule for analysis, await completion.
+
     // Load track (synchronously, as TrackCollection should not be accessed in
     // an unchecked parallel manner).
     TrackPointer pTrack =
@@ -240,17 +274,8 @@ EngineLibraryExportJob::EngineLibraryExportJob(
 
 void EngineLibraryExportJob::operator()(JobScheduler::Connection conn) const {
 
-    std::cout << "About to begin export job..." << std::endl;
-    std::cout << "Engine Library database dir: " << m_request.engineLibraryDbDir.path().toStdString() << std::endl;
-    std::cout << "Music files dir: " << m_request.musicFilesDir.path().toStdString() << std::endl;
-    std::cout << "Export only selected crates? " << m_request.exportSelectedCrates << std::endl;
-    if (m_request.exportSelectedCrates) {
-        std::cout << "Crates to export: " << m_request.crateIdsToExport.size() << std::endl;
-    }
-
     // Crate music directory if it doesn't already exist.
-    auto createdMusicFilesDir = QDir().mkpath(m_request.musicFilesDir.path());
-    std::cout << "Created music files dir: " << createdMusicFilesDir << std::endl;
+    QDir().mkpath(m_request.musicFilesDir.path());
 
     // Determine how many tracks and crates we have to export, and use to
     // calculate job progress.
