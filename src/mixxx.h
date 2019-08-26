@@ -142,7 +142,7 @@ class MixxxMainWindow : public QMainWindow {
             SoundDeviceError err, bool* retryClicked);
     QDialog::DialogCode noOutputDlg(bool* continueClicked);
 
-    std::shared_ptr<mixxx::JobScheduler> m_pScheduler = std::make_shared<mixxx::QtJobScheduler>();
+    std::shared_ptr<mixxx::JobScheduler> m_pScheduler;
 
     // Pointer to the root GUI widget
     QWidget* m_pWidgetParent;

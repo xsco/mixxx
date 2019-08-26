@@ -4,25 +4,21 @@
 
 #include <QWidget>
 
-#include "interop/djinteropexport.h"
 #include "jobs/jobscheduler.h"
 #include "library/export/dlglibraryexport.h"
-#include "library/export/libraryexportworker.h"
+#include "library/export/enginelibraryexportrequest.h"
 #include "preferences/usersettings.h"
 #include "util/parented_ptr.h"
-
-namespace djinterop::enginelibrary {
-class database;
-}
 
 class AnalysisFeature;
 class TrackCollection;
 
 namespace mixxx {
 
-// The LibraryExporter class holds both a library export dialog and a library
-// export worker, managing the communication between them and allowing the user
-// to easily kick off a library export.
+// The LibraryExporter class allows an export of the Mixxx library to be
+// initiated.  It can present a dialog that gathers information from the user
+// about the nature of the export, and schedules a job to perform the export.
+// The class uses libdjinterop to perform the export.
 class LibraryExporter : public QWidget {
     Q_OBJECT
   public:
@@ -33,10 +29,11 @@ class LibraryExporter : public QWidget {
             std::shared_ptr<JobScheduler> pScheduler);
 
   public slots:
+    // Begin the process of a library export.
     void requestExport();
 
   private slots:
-    void workBegin(DjinteropExportModel model);
+    void beginEngineLibraryExport(EngineLibraryExportRequest request);
 
   private:
     UserSettingsPointer m_pConfig;

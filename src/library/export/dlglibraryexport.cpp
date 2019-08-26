@@ -9,8 +9,13 @@
 #include <QRadioButton>
 #include <QStandardPaths>
 
+#include <djinterop/enginelibrary.hpp>
+
 #include "library/crate/crateid.h"
+#include "library/export/enginelibraryexportrequest.h"
 #include "library/trackcollection.h"
+
+static const QString DefaultMixxxExportDirName = "mixxx-export";
 
 namespace el = djinterop::enginelibrary;
 
@@ -19,6 +24,7 @@ namespace mixxx {
 DlgLibraryExport::DlgLibraryExport(
         QWidget* parent, UserSettingsPointer pConfig, TrackCollection& trackCollection)
         : QDialog(parent), m_pConfig{pConfig}, m_trackCollection{trackCollection} {
+    // Selectable list of crates from the Mixxx library.
     m_pCratesList = make_parented<QListWidget>();
     m_pCratesList->setSelectionMode(QListWidget::ExtendedSelection);
     {
@@ -33,7 +39,7 @@ DlgLibraryExport::DlgLibraryExport(
         }
     }
 
-    m_pExternalCratesTree = make_parented<QTreeWidget>();
+    // Read-only text fields showing key directories for export.
     m_pBaseDirectoryTextField = make_parented<QLineEdit>();
     m_pBaseDirectoryTextField->setReadOnly(true);
     m_pDatabaseDirectoryTextField = make_parented<QLineEdit>();
@@ -41,6 +47,8 @@ DlgLibraryExport::DlgLibraryExport(
     m_pMusicDirectoryTextField = make_parented<QLineEdit>();
     m_pMusicDirectoryTextField->setReadOnly(true);
 
+    // Radio buttons to allow choice between exporting the whole music library
+    // or just tracks in a selection of crates.
     auto pWholeLibraryRadio = make_parented<QRadioButton>(tr("Entire music library"));
     pWholeLibraryRadio->setChecked(true);
     this->exportWholeLibrarySelected();
@@ -48,13 +56,13 @@ DlgLibraryExport::DlgLibraryExport(
             &QRadioButton::clicked,
             this,
             &DlgLibraryExport::exportWholeLibrarySelected);
-
     auto pCratesRadio = make_parented<QRadioButton>(tr("Selected crates"));
     connect(pCratesRadio,
             &QRadioButton::clicked,
             this,
             &DlgLibraryExport::exportSelectedCratedSelected);
 
+    // Note about need to analyse tracks before export.
     auto pTrackAnalysisNoteField = make_parented<QLabel>(
             tr("Note: all affected music files will be scheduled for "
                "analysis before they can be exported.  This can take some "
@@ -62,12 +70,12 @@ DlgLibraryExport::DlgLibraryExport(
                "library or selected crates."));
     pTrackAnalysisNoteField->setWordWrap(true);
 
+    // Button to allow ability to browse for the export directory.
     auto pExportDirBrowseButton = make_parented<QPushButton>(tr("Browse"));
     connect(pExportDirBrowseButton,
             &QPushButton::clicked,
             this,
             &DlgLibraryExport::browseExportDirectory);
-
     auto pExportDirLayout = make_parented<QHBoxLayout>();
     pExportDirLayout->addWidget(m_pBaseDirectoryTextField);
     pExportDirLayout->addWidget(pExportDirBrowseButton);
@@ -78,16 +86,17 @@ DlgLibraryExport::DlgLibraryExport(
     pFormLayout->addRow(tr("Copy music files to"), m_pMusicDirectoryTextField);
     pFormLayout->addRow(pTrackAnalysisNoteField);
 
+    // Buttons to begin the export or cancel.
     auto pExportButton = make_parented<QPushButton>(tr("Export"));
     pExportButton->setDefault(true);
     connect(pExportButton, &QPushButton::clicked, this, &DlgLibraryExport::exportRequested);
-
     auto pCancelButton = make_parented<QPushButton>(tr("Cancel"));
     connect(pCancelButton, &QPushButton::clicked, this, &QDialog::reject);
 
+    // Arrange action buttons at bottom of dialog.
     auto pButtonBarLayout = make_parented<QHBoxLayout>();
     pButtonBarLayout->addStretch(1);
-    pButtonBarLayout->addWidget(pWholeLibraryRadio);
+    pButtonBarLayout->addWidget(pWholeLibraryRadio); // TODO (mrsmidge) - move these to top
     pButtonBarLayout->addWidget(pCratesRadio);
     pButtonBarLayout->addWidget(pExportButton);
     pButtonBarLayout->addWidget(pCancelButton);
@@ -96,7 +105,6 @@ DlgLibraryExport::DlgLibraryExport(
     pLayout->addLayout(pFormLayout, 0, 0);
     pLayout->addLayout(pButtonBarLayout, 1, 0);
     pLayout->addWidget(m_pCratesList, 0, 1, 2, 1);
-    pLayout->addWidget(m_pExternalCratesTree, 0, 2, 2, 1);
 
     setLayout(pLayout);
     setWindowTitle(tr("Export Library"));
@@ -107,13 +115,12 @@ DlgLibraryExport::DlgLibraryExport(
 }
 
 void DlgLibraryExport::exportWholeLibrarySelected() {
-    m_pCratesList->selectAll();
+    // Disallow selection of individual crates.
     m_pCratesList->setEnabled(false);
-    // TODO (haslersn): Does it work?
-    // TODO (haslersn): Simple "Select all" button instead
 }
 
 void DlgLibraryExport::exportSelectedCratedSelected() {
+    // Allow selection of individual crates
     m_pCratesList->setEnabled(true);
 }
 
@@ -129,104 +136,46 @@ void DlgLibraryExport::browseExportDirectory() {
     m_pConfig->set(
             ConfigKey("[Library]", "LastLibraryExportDirectory"), ConfigValue(baseDirectory));
 
+    // TODO (mrsmidge) - ask libdjinterop for default EL directory
     QDir baseExportDirectory{baseDirectory};
-    auto databaseDirectory = baseExportDirectory.filePath(
-            QString::fromStdString(DjinteropExportModel::EngineLibraryFolder));
-    auto musicDirectory = baseExportDirectory.filePath(
-            QString::fromStdString(DjinteropExportModel::CanonicalMusicFolder));
-
-    m_database = el::make_database(databaseDirectory.toStdString());
+    auto databaseDirectory = baseExportDirectory.filePath("Engine Library");
+    auto musicDirectory = baseExportDirectory.filePath(DefaultMixxxExportDirName);
 
     m_pBaseDirectoryTextField->setText(baseDirectory);
     m_pDatabaseDirectoryTextField->setText(databaseDirectory);
     m_pMusicDirectoryTextField->setText(musicDirectory);
-
-    updateExternalCratesList();
 }
-
-void DlgLibraryExport::updateExternalCratesList() {
-    // TODO (haslersn): Call this whenever appropriate
-
-    m_pExternalCratesTree->clear();
-
-    if (!m_database) {
-        return;
-    }
-
-    std::unordered_map<int, QTreeWidgetItem*> items;
-    std::vector<std::pair<int, std::unique_ptr<QTreeWidgetItem>>> parentIdsAndChildren;
-
-    for (auto crate : m_database->crates()) {
-        auto pItem = std::make_unique<QTreeWidgetItem>();
-        items[crate.id()] = pItem.get();
-        pItem->setText(0, QString::fromStdString(crate.name()));
-        if (crate.parent()) {
-            parentIdsAndChildren.emplace_back(crate.parent()->id(), std::move(pItem));
-        } else {
-            m_pExternalCratesTree->addTopLevelItem(pItem.release());
-        }
-    }
-
-    for (auto&& edge : parentIdsAndChildren) {
-        auto it = items.find(edge.first);
-        if (it == items.end()) {
-            qWarning() << "Crate had an invalid parent ID.";
-            continue;
-        }
-        it->second->addChild(to_parented(edge.second));
-    }
-}
-
-namespace {
-
-djinterop::crate createOrLoadCrate(const djinterop::database& database, const std::string& name) {
-    auto crateCandidates = database.crates_by_name(name);
-    crateCandidates.erase(
-            std::remove_if(crateCandidates.begin(),
-                    crateCandidates.end(),
-                    [](const auto& crate) {
-                        return static_cast<bool>(
-                                crate.parent()); // crates that have a parent are no candidate
-                    }),
-            crateCandidates.end());
-    switch (crateCandidates.size()) {
-    case 0:
-        return database.create_crate(name);
-    case 1:
-        return crateCandidates.front();
-    default:
-        // TODO (haslersn): Throw something
-        return crateCandidates.front();
-    }
-}
-
-} // namespace
 
 void DlgLibraryExport::exportRequested() {
     // Check a base export directory has been chosen
-    if (!m_database) {
+    if (m_pBaseDirectoryTextField->text() == "") {
         QMessageBox::information(this,
                 tr("No Export Directory Chosen"),
-                tr("No export directory was chosen. Please choose a directory in order to export "
-                   "the music library."),
+                tr("No export directory was chosen. Please choose a directory "
+                    "in order to export the music library."),
                 QMessageBox::Ok,
                 QMessageBox::Ok);
         return;
     }
 
-    DjinteropExportModel model;
-    model.musicDirectory = m_pMusicDirectoryTextField->text().toStdString();
+    // TODO (mrsmidge) - see if an EL DB exists in the chosen dir already, and
+    // ask the user for confirmation before proceeding if so.
 
-    for (auto* pItem : m_pCratesList->selectedItems()) {
-        CrateId id{pItem->data(Qt::UserRole).value<int>()};
-        Crate crate;
-        m_trackCollection.crates().readCrateById(id, &crate);
-        auto name = crate.getName().toStdString();
-        auto externalCrate = createOrLoadCrate(*m_database, name);
-        model.crateMappings.emplace_back(m_trackCollection, id, externalCrate);
+    // Construct a request to export the library/crates.
+    // Assumed to always be an Engine Library export in this iteration of the
+    // dialog.
+    EngineLibraryExportRequest request;
+    request.engineLibraryDbDir = QDir{m_pDatabaseDirectoryTextField->text()};
+    request.musicFilesDir = QDir{m_pMusicDirectoryTextField->text()};
+    request.exportSelectedCrates = m_pCratesList->isEnabled();
+    if (request.exportSelectedCrates) {
+        for (auto* pItem : m_pCratesList->selectedItems()) {
+            CrateId id{pItem->data(Qt::UserRole).value<int>()};
+            request.crateIdsToExport.insert(id);
+        }
     }
 
-    emit startExport(std::move(model));
+    emit startEngineLibraryExport(std::move(request));
     accept();
 }
 

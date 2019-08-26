@@ -1,7 +1,6 @@
 #include "library/export/libraryexporter.h"
 
-#include "interop/djinteropexport.h"
-#include "library/crate/crateid.h"
+#include "library/export/enginelibraryexportjob.h"
 
 namespace mixxx {
 
@@ -21,19 +20,24 @@ void LibraryExporter::requestExport() {
     if (!m_pDialog) {
         m_pDialog = make_parented<DlgLibraryExport>(this, m_pConfig, m_trackCollection);
         connect(m_pDialog.get(),
-                SIGNAL(startExport(DjinteropExportModel)),
+                SIGNAL(startEngineLibraryExport(EngineLibraryExportRequest)),
                 this,
-                SLOT(workBegin(DjinteropExportModel)));
+                SLOT(beginEngineLibraryExport(EngineLibraryExportRequest)));
     } else {
         m_pDialog->show();
         m_pDialog->raise();
         m_pDialog->setWindowState(
-                (m_pDialog->windowState() & ~Qt::WindowMinimized) | Qt::WindowActive);
+                (m_pDialog->windowState() & ~Qt::WindowMinimized) |
+                Qt::WindowActive);
     }
 }
 
-void LibraryExporter::workBegin(DjinteropExportModel model) {
-    m_pScheduler->run(DjinteropExportJob{std::move(model)});
+void LibraryExporter::beginEngineLibraryExport(
+        EngineLibraryExportRequest request) {
+    EngineLibraryExportJob job{m_trackCollection, std::move(request)};
+    m_pScheduler->run(job);
+
+    // TODO (mrsmidge) - construct a modal dialog to monitor job progress.
 }
 
 } // namespace mixxx
