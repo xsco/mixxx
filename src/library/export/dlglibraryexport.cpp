@@ -136,9 +136,9 @@ void DlgLibraryExport::browseExportDirectory() {
     m_pConfig->set(
             ConfigKey("[Library]", "LastLibraryExportDirectory"), ConfigValue(baseDirectory));
 
-    // TODO (mrsmidge) - ask libdjinterop for default EL directory
     QDir baseExportDirectory{baseDirectory};
-    auto databaseDirectory = baseExportDirectory.filePath("Engine Library");
+    auto databaseDirectory = baseExportDirectory.filePath(
+            el::default_database_dir_name);
     auto musicDirectory = baseExportDirectory.filePath(DefaultMixxxExportDirName);
 
     m_pBaseDirectoryTextField->setText(baseDirectory);
@@ -158,8 +158,24 @@ void DlgLibraryExport::exportRequested() {
         return;
     }
 
-    // TODO (mrsmidge) - see if an EL DB exists in the chosen dir already, and
-    // ask the user for confirmation before proceeding if so.
+    // See if an EL DB exists in the chosen dir already, and ask the user for
+    // confirmation before proceeding if so.
+    if (el::database_exists(m_pDatabaseDirectoryTextField->text().toStdString())) {
+        int ret = QMessageBox::question(
+                this,
+                tr("Merge Into Existing Library?"),
+                tr("There is already an existing library in directory ") +
+                m_pDatabaseDirectoryTextField->text() +
+                tr("\nIf you proceed, the Mixxx library will be merged into "
+                   "this existing library.  Do you want to merge into the "
+                   "the existing library?"),
+                QMessageBox::Yes | QMessageBox::Cancel,
+                QMessageBox::Cancel);
+        if (ret != QMessageBox::Yes)
+        {
+            return;
+        }
+    }
 
     // Construct a request to export the library/crates.
     // Assumed to always be an Engine Library export in this iteration of the

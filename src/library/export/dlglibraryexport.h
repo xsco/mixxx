@@ -12,10 +12,6 @@
 #include "preferences/usersettings.h"
 #include "util/parented_ptr.h"
 
-namespace djinterop {
-class database;
-}
-
 class TrackCollection;
 
 namespace mixxx {
