@@ -29,7 +29,6 @@ DlgLibraryExport::DlgLibraryExport(
     m_pCratesList->setSelectionMode(QListWidget::ExtendedSelection);
     {
         // Populate list of crates.
-        // TODO (haslersn): Also update this if crates are created/removed
         auto crates = m_trackCollection.crates().selectCrates();
         Crate crate;
         while (crates.populateNext(&crate)) {
@@ -96,15 +95,17 @@ DlgLibraryExport::DlgLibraryExport(
     // Arrange action buttons at bottom of dialog.
     auto pButtonBarLayout = make_parented<QHBoxLayout>();
     pButtonBarLayout->addStretch(1);
-    pButtonBarLayout->addWidget(pWholeLibraryRadio); // TODO (mrsmidge) - move these to top
-    pButtonBarLayout->addWidget(pCratesRadio);
     pButtonBarLayout->addWidget(pExportButton);
     pButtonBarLayout->addWidget(pCancelButton);
 
     auto pLayout = make_parented<QGridLayout>();
-    pLayout->addLayout(pFormLayout, 0, 0);
-    pLayout->addLayout(pButtonBarLayout, 1, 0);
-    pLayout->addWidget(m_pCratesList, 0, 1, 2, 1);
+    pLayout->setColumnStretch(0, 1);
+    pLayout->setColumnStretch(1, 2);
+    pLayout->addWidget(pWholeLibraryRadio, 0, 0);
+    pLayout->addWidget(pCratesRadio, 1, 0);
+    pLayout->addWidget(m_pCratesList, 2, 0);
+    pLayout->addLayout(pFormLayout, 0, 1, 3, 1);
+    pLayout->addLayout(pButtonBarLayout, 3, 0, 1, 2);
 
     setLayout(pLayout);
     setWindowTitle(tr("Export Library"));
