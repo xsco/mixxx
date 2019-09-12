@@ -144,6 +144,8 @@ void AnalysisFeature::analyzeTracks(QList<TrackId> trackIds) {
                 this, &AnalysisFeature::onTrackAnalysisSchedulerProgress);
         connect(m_pTrackAnalysisScheduler.get(), &TrackAnalysisScheduler::finished,
                 this, &AnalysisFeature::stopAnalysis);
+        connect(m_pTrackAnalysisScheduler.get(), &TrackAnalysisScheduler::trackProgress,
+                this, &AnalysisFeature::onTrackAnalysisSchedulerTrackProgress);
 
         emit(analysisActive(true));
     }
@@ -167,6 +169,14 @@ void AnalysisFeature::onTrackAnalysisSchedulerProgress(
         }
     }
 }
+
+void AnalysisFeature::onTrackAnalysisSchedulerTrackProgress(
+        TrackId trackId, AnalyzerProgress analyzerProgress) {
+    if (analyzerProgress == kAnalyzerProgressDone) {
+        emit(trackAnalysisDone(trackId));
+    }
+}
+
 
 void AnalysisFeature::suspendAnalysis() {
     //qDebug() << this << "suspendAnalysis";

@@ -13,7 +13,6 @@
 #include <QFont>
 
 #include "analysisfeature.h"
-#include "jobs/jobscheduler.h"
 #include "library/coverartcache.h"
 #include "library/scanner/libraryscanner.h"
 #include "library/setlogfeature.h"
@@ -96,8 +95,7 @@ class Library: public QObject,
     void setRowHeight(int rowHeight);
     void setEditMedatataSelectedClick(bool enable);
 
-    std::unique_ptr<mixxx::LibraryExporter> makeLibraryExporter(
-            QWidget* parent, std::shared_ptr<mixxx::JobScheduler> pScheduler);
+    std::unique_ptr<mixxx::LibraryExporter> makeLibraryExporter(QWidget* parent);
 
   public slots:
     void slotShowTrackModel(QAbstractItemModel* model);

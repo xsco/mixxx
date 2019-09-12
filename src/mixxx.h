@@ -22,7 +22,6 @@
 #include <QSharedPointer>
 #include <QString>
 
-#include "jobs/qtjobscheduler.h"
 #include "preferences/configobject.h"
 #include "preferences/constants.h"
 #include "preferences/usersettings.h"
@@ -141,8 +140,6 @@ class MixxxMainWindow : public QMainWindow {
     QDialog::DialogCode soundDeviceErrorMsgDlg(
             SoundDeviceError err, bool* retryClicked);
     QDialog::DialogCode noOutputDlg(bool* continueClicked);
-
-    std::shared_ptr<mixxx::JobScheduler> m_pScheduler;
 
     // Pointer to the root GUI widget
     QWidget* m_pWidgetParent;

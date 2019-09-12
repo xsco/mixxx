@@ -458,11 +458,8 @@ void MixxxMainWindow::initialize(QApplication* pApp, const CmdlineArgs& args) {
     m_pPrefDlg->setWindowIcon(QIcon(":/images/mixxx_icon.svg"));
     m_pPrefDlg->setHidden(true);
 
-    // Initialise job scheduler.
-    m_pScheduler = std::make_shared<mixxx::QtJobScheduler>();
-
     // Initialise library exporter
-    m_pLibraryExporter = m_pLibrary->makeLibraryExporter(this, m_pScheduler);
+    m_pLibraryExporter = m_pLibrary->makeLibraryExporter(this);
 
     launchProgress(60);
 
@@ -692,9 +689,6 @@ void MixxxMainWindow::finalize() {
     // Library exporter depends on job scheduler.
     qDebug() << t.elapsed(false).debugMillisWithUnit() << "deleting LibraryExporter";
     m_pLibraryExporter = nullptr; // is a unique_ptr
-
-    qDebug() << t.elapsed(false).debugMillisWithUnit() << "deleting JobScheduler";
-    m_pScheduler = nullptr; // is a shared_ptr
 
     // Delete the library after the view so there are no dangling pointers to
     // the data models.

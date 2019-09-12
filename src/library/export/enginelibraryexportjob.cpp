@@ -7,6 +7,7 @@
 #include "library/crate/crate.h"
 #include "library/trackcollection.h"
 #include "track/track.h"
+#include "waveform/waveformfactory.h"
 
 namespace el = djinterop::enginelibrary;
 namespace stdex = std::experimental;
@@ -89,7 +90,8 @@ djinterop::track getTrackByRelativePath(
 
 void exportMetadata(djinterop::database &db,
         QHash<TrackId, int64_t>& mixxxToEngineLibraryTrackIdMap,
-        TrackPointer pTrack, const std::string& relativePath) {
+        TrackPointer pTrack, std::unique_ptr<Waveform> pWaveformSummary,
+        std::unique_ptr<Waveform> pWaveform, const std::string& relativePath) {
     // Create or load the track in the EL database, using the relative path to
     // the music file.  We will record the mapping from Mixxx track id to EL
     // track id as well.
@@ -122,7 +124,7 @@ void exportMetadata(djinterop::database &db,
     auto sampleCount = static_cast<int64_t>(pTrack->getDuration() * pTrack->getSampleRate());
     externalTrack.set_sampling({static_cast<double>(pTrack->getSampleRate()), sampleCount});
 
-    // TODO (mrsmidge) - Set average loudness.
+    // TODO (mr-smidge) - Set average loudness.
     externalTrack.set_average_loudness(0.5f);
 
     // Fill in beat grid.  For now, assume a constant average BPM across
@@ -138,6 +140,10 @@ void exportMetadata(djinterop::database &db,
         beatgrid = el::normalize_beatgrid(std::move(beatgrid), sampleCount);
         externalTrack.set_default_beatgrid(beatgrid);
         externalTrack.set_adjusted_beatgrid(beatgrid);
+    }
+    else {
+        qInfo() << "No beats data found for track" << pTrack->getId()
+            << "(" << pTrack->getFileInfo().fileName() << ")";
     }
 
     auto cues = pTrack->getCuePoints();
@@ -180,56 +186,75 @@ void exportMetadata(djinterop::database &db,
     // it to the Engine Library database here.
     externalTrack.set_loops({});
 
+    // TODO (mr-smidge) write summary waveform.
+
     // Write high-resolution full waveform
-    auto waveform = pTrack->getWaveform();
-    if (waveform != nullptr) {
+    if (pWaveform) {
         int64_t externalWaveformSize = externalTrack.recommended_waveform_size();
         std::vector<djinterop::waveform_entry> externalWaveform;
         externalWaveform.reserve(externalWaveformSize);
         for (int64_t i = 0; i < externalWaveformSize; ++i) {
-            auto j = waveform->getDataSize() * i / externalWaveformSize;
-            externalWaveform.push_back({{waveform->getLow(j), 127},
-                    {waveform->getMid(j), 127},
-                    {waveform->getHigh(j), 127}});
+            auto j = pWaveform->getDataSize() * i / externalWaveformSize;
+            externalWaveform.push_back({{pWaveform->getLow(j), 127},
+                    {pWaveform->getMid(j), 127},
+                    {pWaveform->getHigh(j), 127}});
         }
         externalTrack.set_waveform(std::move(externalWaveform));
+    }
+    else {
+        qInfo() << "No waveform data found for track" << pTrack->getId()
+            << "(" << pTrack->getFileInfo().fileName() << ")";
     }
 
     qInfo() << "Wrote all meta-data for track";
 }
 
-void exportTrack(JobScheduler::Connection conn,
-        TrackCollection &trackCollection,
+void exportTrack(TrackCollection &trackCollection,
         const EngineLibraryExportRequest& request, djinterop::database &db,
         QHash<TrackId, int64_t>& mixxxToEngineLibraryTrackIdMap,
         const TrackId& trackId) {
-    // TODO (mrsmidge) - schedule for analysis, await completion.
+    // Load track.
+    // TODO (mr-smidge) load track in the right thread.
+    // TrackDAO::getTrack() says: "WARNING: Only call this from the main
+    // thread instance of TrackDAO".
+    TrackPointer pTrack = trackCollection.getTrackDAO().getTrack(trackId);
 
-    // Load track (synchronously, as TrackCollection should not be accessed in
-    // an unchecked parallel manner).
-    TrackPointer pTrack =
-            conn.runSync([&]() {
-                   return trackCollection.getTrackDAO().getTrack(trackId);
-               }).get();
+    // Load waveforms from analysis info.
+    auto& analysisDao = trackCollection.getAnalysisDAO();
+    std::unique_ptr<Waveform> pWaveformSummary;
+    std::unique_ptr<Waveform> pWaveform;
+    auto waveformSummaryAnalyses = analysisDao.getAnalysesForTrackByType(
+            trackId, AnalysisDao::TYPE_WAVESUMMARY);
+    if (!waveformSummaryAnalyses.isEmpty()) {
+        auto& summaryAnalysis = waveformSummaryAnalyses.first();
+        pWaveformSummary.reset(
+                WaveformFactory::loadWaveformFromAnalysis(summaryAnalysis));
+    }
+    auto waveformAnalyses = analysisDao.getAnalysesForTrackByType(
+            trackId, AnalysisDao::TYPE_WAVEFORM);
+    if (!waveformAnalyses.isEmpty()) {
+        auto& waveformAnalysis=  waveformAnalyses.first();
+        pWaveform.reset(
+                WaveformFactory::loadWaveformFromAnalysis(waveformAnalysis));
+    }
 
     // Copy the file, if required.
     auto musicFileRelativePath = exportFile(request, pTrack);
 
     // Export meta-data.
     exportMetadata(db, mixxxToEngineLibraryTrackIdMap, pTrack,
-            musicFileRelativePath);
+        std::move(pWaveformSummary), std::move(pWaveform),
+        musicFileRelativePath);
 }
 
-void exportCrate(JobScheduler::Connection conn,
-        TrackCollection &trackCollection, djinterop::crate &extRootCrate,
+void exportCrate(TrackCollection &trackCollection,
+        djinterop::crate &extRootCrate,
         QHash<TrackId, int64_t>& mixxxToEngineLibraryTrackIdMap,
         const CrateId &crateId) {
     // Load the crate (synchronously, as TrackCollection should not be accessed
     // in an unchecked parallel manner).
     Crate crate;
-    conn.runSync([&]() {
-           trackCollection.crates().readCrateById(crateId, &crate);
-       }).get();
+    trackCollection.crates().readCrateById(crateId, &crate);
     
     // Create a new crate as a sub-crate of the top-level Mixxx crate.
     auto extCrate = extRootCrate.create_sub_crate(crate.getName().toStdString());
@@ -244,6 +269,39 @@ void exportCrate(JobScheduler::Connection conn,
 
 } // namespace
 
+
+EngineLibraryExportJob::EngineLibraryExportJob(QObject* parent,
+        TrackCollection& trackCollection,
+        AnalysisFeature& analysisFeature, EngineLibraryExportRequest request)
+        : QThread(parent), m_trackCollection(trackCollection),
+        m_analysisFeature(analysisFeature), m_request{std::move(request)} {
+    // Route track analysis signals, as we will be scheduling tracks for
+    // analysis during export.
+    connect(this, &EngineLibraryExportJob::analyzeTracks,
+            &m_analysisFeature, &AnalysisFeature::analyzeTracks);
+    connect(&m_analysisFeature, &AnalysisFeature::analysisActive,
+            this, &EngineLibraryExportJob::analysisActive);
+    connect(&m_analysisFeature, &AnalysisFeature::trackAnalysisDone,
+            this, &EngineLibraryExportJob::trackAnalysisDone);
+}
+
+void EngineLibraryExportJob::analysisActive(bool bActive) {
+    if (!bActive) {
+        // Prevent any further waiting by marking all analysis as being done.
+        // Note that the code below must be idempotent, as this slot may be
+        // invoked multiple times in succession.
+        QMutexLocker lock{&m_trackMutex};
+        m_allTrackAnalysisDone = true;
+        m_waitAnyTrack.wakeAll();
+    }
+}
+
+void EngineLibraryExportJob::trackAnalysisDone(TrackId trackId) {
+    // Enqueue the id of our newly-analysed track.
+    QMutexLocker lock{&m_trackMutex};
+    m_analysedTrackQueue.push_back(trackId);
+    m_waitAnyTrack.wakeAll();
+}
 
 // Obtain a set of all track ids across all directories in the whole Mixxx library.
 QSet<TrackId> EngineLibraryExportJob::getAllTrackIds() const {
@@ -267,13 +325,7 @@ QSet<TrackId> EngineLibraryExportJob::getTracksIdsInCrates(
     return trackIds;
 }
 
-EngineLibraryExportJob::EngineLibraryExportJob(
-        TrackCollection &trackCollection, EngineLibraryExportRequest request)
-        : m_trackCollection(trackCollection), m_request{std::move(request)} {
-}
-
-void EngineLibraryExportJob::operator()(JobScheduler::Connection conn) const {
-
+void EngineLibraryExportJob::run() {
     // Crate music directory if it doesn't already exist.
     QDir().mkpath(m_request.musicFilesDir.path());
 
@@ -296,7 +348,7 @@ void EngineLibraryExportJob::operator()(JobScheduler::Connection conn) const {
     // additional count for setting up the database at the start.
     double maxProgress = trackIds.size() + crateIds.size() + 1;
     double currProgress = 0;
-    conn.setProgress(currProgress / maxProgress);
+    emit(jobProgress(currProgress / maxProgress));
 
     // Ensure that the database exists, creating an empty one if not.
     bool created;
@@ -304,18 +356,46 @@ void EngineLibraryExportJob::operator()(JobScheduler::Connection conn) const {
             m_request.engineLibraryDbDir.path().toStdString(),
             el::version_latest, created);
     ++currProgress;
-    conn.setProgress(currProgress / maxProgress);
+    emit(jobProgress(currProgress / maxProgress));
   
-    // Export all relevant tracks first, building up a map from Mixxx track id
-    // to EL track id as we go.
+    // We will build up a map from Mixxx track id to EL track id during export.
     QHash<TrackId, int64_t> mixxxToEngineLibraryTrackIdMap;
-    for (const TrackId& trackId : trackIds) {
+
+    // Schedule all tracks for analysis.
+    {
+        QMutexLocker lock(&m_trackMutex);
+        m_allTrackAnalysisDone = false;
+    }
+    emit(analyzeTracks(trackIds.toList()));
+
+    // Run a consumer queue, waiting for tracks that have finished analysis.
+    while (true) {
+        TrackId trackId;
+        {
+            // Wait for a track to have finished analysis.
+            QMutexLocker lock(&m_trackMutex);
+            while (m_analysedTrackQueue.isEmpty() && !m_allTrackAnalysisDone) {
+                m_waitAnyTrack.wait(&m_trackMutex);
+            }
+
+            if (!m_analysedTrackQueue.isEmpty()) {
+                // We have a track to analyse.
+                trackId = m_analysedTrackQueue.first();
+                m_analysedTrackQueue.removeFirst();
+            }
+            else {
+                // No more track export work to do.
+                qInfo() << "No more tracks expected to finish analysis";
+                break;
+            }
+        }
+
         qInfo() << "Exporting track" << trackId.value() << "...";
-        exportTrack(conn, m_trackCollection, m_request, db,
+        exportTrack(m_trackCollection, m_request, db,
                 mixxxToEngineLibraryTrackIdMap, trackId);
 
         ++currProgress;
-        conn.setProgress(currProgress / maxProgress);
+        emit(jobProgress(currProgress / maxProgress));
     }
 
     // We will ensure that there is a special top-level crate representing the
@@ -327,6 +407,7 @@ void EngineLibraryExportJob::operator()(JobScheduler::Connection conn) const {
         : db.create_root_crate(MixxxRootCrateName);
     for (const TrackId& trackId : trackIds) {
         // Add each track to the root crate, even if it also belongs to others.
+        // FIXME (mr-smidge) - if analysis terminated early, hash map may not contain an entry!
         auto extTrackId = mixxxToEngineLibraryTrackIdMap[trackId];
         extRootCrate.add_track(extTrackId);
     }
@@ -334,11 +415,11 @@ void EngineLibraryExportJob::operator()(JobScheduler::Connection conn) const {
     // Export all Mixxx crates
     for (const CrateId& crateId : crateIds) {
         qInfo() << "Exporting crate" << crateId.value() << "...";
-        exportCrate(conn, m_trackCollection, extRootCrate,
+        exportCrate(m_trackCollection, extRootCrate,
                 mixxxToEngineLibraryTrackIdMap, crateId);
 
         ++currProgress;
-        conn.setProgress(currProgress / maxProgress);
+        emit(jobProgress(currProgress / maxProgress));
     }
 
     std::cout << "Engine Library Export Job completed successfully" << std::endl;

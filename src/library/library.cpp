@@ -470,12 +470,11 @@ void Library::setEditMedatataSelectedClick(bool enabled) {
 }
 
 std::unique_ptr<mixxx::LibraryExporter> Library::makeLibraryExporter(
-        QWidget* parent, std::shared_ptr<mixxx::JobScheduler> pScheduler) {
+        QWidget* parent) {
     // New object is expected to be owned (and lifecycle-managed)
     // by the supplied parent widget.
     return std::make_unique<mixxx::LibraryExporter>(
-            parent, m_pConfig, *m_pTrackCollection, *m_pAnalysisFeature,
-            std::move(pScheduler));
+            parent, m_pConfig, *m_pTrackCollection, *m_pAnalysisFeature);
 }
 
 void Library::saveCachedTrack(Track* pTrack) noexcept {

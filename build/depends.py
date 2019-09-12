@@ -894,9 +894,6 @@ class MixxxCore(Feature):
                    "src/mixxxapplication.cpp",
                    "src/errordialoghandler.cpp",
 
-                   "src/jobs/jobscheduler.cpp",
-                   "src/jobs/qtjobscheduler.cpp",
-
                    "src/sources/audiosource.cpp",
                    "src/sources/audiosourcestereoproxy.cpp",
                    "src/sources/metadatasourcetaglib.cpp",

@@ -43,6 +43,7 @@ class AnalysisFeature : public LibraryFeature {
 
   signals:
     void analysisActive(bool bActive);
+    void trackAnalysisDone(TrackId trackId);
 
   public slots:
     void activate();
@@ -54,6 +55,7 @@ class AnalysisFeature : public LibraryFeature {
 
   private slots:
     void onTrackAnalysisSchedulerProgress(AnalyzerProgress currentTrackProgress, int currentTrackNumber, int totalTracksCount);
+    void onTrackAnalysisSchedulerTrackProgress(TrackId trackId, AnalyzerProgress analyzerProgress);
 
   private:
     // Sets the title of this feature to the default name, given by
