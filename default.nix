@@ -41,12 +41,12 @@ let inherit (nixroot) stdenv pkgs lib
 
   libdjinterop = stdenv.mkDerivation {
     name = "libdjinterop";
-    version = "2019-06-27";
+    version = "2019-09-03";
     src = fetchFromGitHub {
-      owner = "haslersn";
+      owner = "xsco";
       repo = "libdjinterop";
-      rev = "563886cd8a50dc25872eb015f0d33b96687577f3";
-      sha256 = "03w7z0587p8pvzh64qgjbjv2pbjd78f74pjyhdjk2x150ljgs61z";
+      rev = "7d839bc6d3e6f732014a274d856af471eb06fa67";
+      sha256 = "sha256-Yw52XMaIGaeFySYBXhcTvthZc2xd52YeAiKcDU/2n8s=";
     };
     nativeBuildInputs = [
       meson
