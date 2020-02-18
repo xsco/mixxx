@@ -12,7 +12,7 @@
 #include "preferences/usersettings.h"
 #include "util/parented_ptr.h"
 
-class TrackCollection;
+class TrackCollectionManager;
 
 namespace mixxx {
 
@@ -28,7 +28,7 @@ class DlgLibraryExport : public QDialog {
   public:
     DlgLibraryExport(
             QWidget* parent, UserSettingsPointer pConfig,
-            TrackCollection& trackCollection);
+            TrackCollectionManager& trackCollectionManager);
 
   signals:
     // The startExport signal is emitted when sufficient information has been
@@ -44,7 +44,7 @@ class DlgLibraryExport : public QDialog {
 
   private:
     UserSettingsPointer m_pConfig;
-    TrackCollection& m_trackCollection;
+    TrackCollectionManager& m_trackCollectionManager;
 
     parented_ptr<QListWidget> m_pCratesList;
     parented_ptr<QLineEdit> m_pBaseDirectoryTextField;

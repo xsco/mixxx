@@ -10,9 +10,10 @@
 #include "util/parented_ptr.h"
 
 class AnalysisFeature;
-class TrackCollection;
+class TrackCollectionManager;
 
 namespace mixxx {
+class TrackLoader;
 
 // The LibraryExporter class allows an export of the Mixxx library to be
 // initiated.  It can present a dialog that gathers information from the user
@@ -23,7 +24,7 @@ class LibraryExporter : public QWidget {
   public:
     LibraryExporter(QWidget* parent,
             UserSettingsPointer pConfig,
-            TrackCollection& trackCollection,
+            TrackCollectionManager& trackCollectionManager,
             AnalysisFeature& analysisFeature);
 
   public slots:
@@ -35,7 +36,8 @@ class LibraryExporter : public QWidget {
 
   private:
     UserSettingsPointer m_pConfig;
-    TrackCollection& m_trackCollection;
+    TrackCollectionManager& m_trackCollectionManager;
+    TrackLoader* m_pTrackLoader;
     AnalysisFeature& m_analysisFeature;
     parented_ptr<DlgLibraryExport> m_pDialog;
 };

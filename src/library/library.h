@@ -32,6 +32,10 @@ class WSearchLineEdit;
 class WLibrarySidebar;
 class WLibrary;
 
+namespace mixxx {
+class LibraryExporter;
+} // namespace mixxx
+
 // A Library class is a container for all the model-side aspects of the library.
 // A library widget can be attached to the Library object by calling bindLibraryWidget.
 class Library: public QObject {

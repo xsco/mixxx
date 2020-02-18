@@ -541,11 +541,17 @@ void Library::setEditMedatataSelectedClick(bool enabled) {
     emit setSelectedClick(enabled);
 }
 
+TrackCollection& Library::trackCollection() {
+    DEBUG_ASSERT(m_pTrackCollectionManager);
+    DEBUG_ASSERT(m_pTrackCollectionManager->internalCollection());
+    return *m_pTrackCollectionManager->internalCollection();
+}
+
 std::unique_ptr<mixxx::LibraryExporter> Library::makeLibraryExporter(
         QWidget* parent) {
     // New object is expected to be owned (and lifecycle-managed)
     // by the supplied parent widget.
     return std::make_unique<mixxx::LibraryExporter>(
-            parent, m_pConfig, *m_pTrackCollection, *m_pAnalysisFeature);
+            parent, m_pConfig, *m_pTrackCollectionManager, *m_pAnalysisFeature);
 }
 

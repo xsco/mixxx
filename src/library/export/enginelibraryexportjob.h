@@ -2,14 +2,18 @@
 
 #include <memory>
 
+#include <QHash>
+#include <QList>
 #include <QMutex>
 #include <QSet>
 #include <QThread>
-#include <QVector>
 #include <QWaitCondition>
 
+#include <djinterop/database.hpp>
+
 #include "library/analysisfeature.h"
-#include "library/trackcollection.h"
+#include "library/trackcollectionmanager.h"
+#include "library/trackloader.h"
 #include "library/export/enginelibraryexportrequest.h"
 
 namespace mixxx {
@@ -21,33 +25,32 @@ class EngineLibraryExportJob : public QThread {
     Q_OBJECT
   public:
     EngineLibraryExportJob(
-            QObject* parent, TrackCollection& trackCollection,
-            AnalysisFeature& analysisFeature,
+            QObject* parent, TrackCollectionManager& trackCollectionManager,
+            TrackLoader &trackLoader, AnalysisFeature& analysisFeature,
             EngineLibraryExportRequest request);
 
     void run() override;
 
   signals:
-    void analyzeTracks(QList<TrackId> trackIds);
     void jobProgress(double progress);
 
   private slots:
-    void analysisActive(bool bActive);
-    void trackAnalysisDone(TrackId trackId);
+    void trackLoaded(TrackRef trackRef, TrackPointer trackPtr);
 
   private:
-    QSet<TrackId> getAllTrackIds() const;
-    QSet<TrackId> getTracksIdsInCrates(
-            const QSet<CrateId> &crateIds) const;
+    QSet<TrackRef> getAllTrackRefs() const;
+    QSet<TrackRef> getTracksRefsInCrates(const QSet<CrateId>& crateIds) const;
 
-    bool m_allTrackAnalysisDone;
-    QVector<TrackId> m_analysedTrackQueue;
+    QList<TrackRef> m_trackQueue;
     QMutex m_trackMutex;
     QWaitCondition m_waitAnyTrack;
 
-    TrackCollection& m_trackCollection;
+    TrackCollectionManager& m_trackCollectionManager;
+    TrackLoader& m_trackLoader;
     AnalysisFeature& m_analysisFeature;
     EngineLibraryExportRequest m_request;
+    QHash<TrackId, int64_t> m_mixxxToEngineLibraryTrackIdMap;
+    std::unique_ptr<djinterop::database> m_pDb;
 };
 
 } // namespace mixxx

@@ -363,7 +363,10 @@ add_library(mixxx-lib STATIC EXCLUDE_FROM_ALL
   src/library/dlgtrackinfo.cpp
   src/library/dlgtrackinfo.ui
   src/library/dlgtrackmetadataexport.cpp
+  src/library/export/dlglibraryexport.cpp
   src/library/export/dlgtrackexport.ui
+  src/library/export/enginelibraryexportjob.cpp
+  src/library/export/libraryexporter.cpp
   src/library/export/trackexportdlg.cpp
   src/library/export/trackexportwizard.cpp
   src/library/export/trackexportworker.cpp
@@ -1131,6 +1134,13 @@ if(WIN32 AND STATIC_DEPS)
   target_compile_definitions(mixxx-lib PUBLIC CHROMAPRINT_NODLL)
   find_package(FFTW REQUIRED)
   target_link_libraries(mixxx-lib PUBLIC FFTW::FFTW)
+endif()
+
+# libdjinterop
+find_package(DjInterop REQUIRED)
+target_link_libraries(mixxx-lib PUBLIC DjInterop::DjInterop)
+if(WIN32 AND STATIC_DEPS)
+    target_compile_definitions(mixxx-lib PUBLIC DjInterop__NO_DLL)
 endif()
 
 # Ebur128

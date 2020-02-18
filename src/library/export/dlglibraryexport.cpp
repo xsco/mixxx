@@ -14,6 +14,7 @@
 #include "library/crate/crateid.h"
 #include "library/export/enginelibraryexportrequest.h"
 #include "library/trackcollection.h"
+#include "library/trackcollectionmanager.h"
 
 static const QString DefaultMixxxExportDirName = "mixxx-export";
 
@@ -22,14 +23,16 @@ namespace el = djinterop::enginelibrary;
 namespace mixxx {
 
 DlgLibraryExport::DlgLibraryExport(
-        QWidget* parent, UserSettingsPointer pConfig, TrackCollection& trackCollection)
-        : QDialog(parent), m_pConfig{pConfig}, m_trackCollection{trackCollection} {
+        QWidget* parent, UserSettingsPointer pConfig,
+        TrackCollectionManager& trackCollectionManager)
+        : QDialog(parent), m_pConfig{pConfig},
+        m_trackCollectionManager{trackCollectionManager} {
     // Selectable list of crates from the Mixxx library.
     m_pCratesList = make_parented<QListWidget>();
     m_pCratesList->setSelectionMode(QListWidget::ExtendedSelection);
     {
         // Populate list of crates.
-        auto crates = m_trackCollection.crates().selectCrates();
+        auto crates = m_trackCollectionManager.internalCollection()->crates().selectCrates();
         Crate crate;
         while (crates.populateNext(&crate)) {
             auto pItem = std::make_unique<QListWidgetItem>(crate.getName());
@@ -61,14 +64,6 @@ DlgLibraryExport::DlgLibraryExport(
             this,
             &DlgLibraryExport::exportSelectedCratedSelected);
 
-    // Note about need to analyse tracks before export.
-    auto pTrackAnalysisNoteField = make_parented<QLabel>(
-            tr("Note: all affected music files will be scheduled for "
-               "analysis before they can be exported.  This can take some "
-               "time if there are many tracks requiring analysis in the music "
-               "library or selected crates."));
-    pTrackAnalysisNoteField->setWordWrap(true);
-
     // Button to allow ability to browse for the export directory.
     auto pExportDirBrowseButton = make_parented<QPushButton>(tr("Browse"));
     connect(pExportDirBrowseButton,
@@ -83,7 +78,6 @@ DlgLibraryExport::DlgLibraryExport(
     pFormLayout->addRow(tr("Base export directory"), pExportDirLayout);
     pFormLayout->addRow(tr("Engine Library export directory"), m_pDatabaseDirectoryTextField);
     pFormLayout->addRow(tr("Copy music files to"), m_pMusicDirectoryTextField);
-    pFormLayout->addRow(pTrackAnalysisNoteField);
 
     // Buttons to begin the export or cancel.
     auto pExportButton = make_parented<QPushButton>(tr("Export"));

@@ -50,7 +50,6 @@ class AnalysisFeature : public LibraryFeature {
   public slots:
     void activate() override;
     void analyzeTracks(QList<TrackId> trackIds);
-    void stopAnalysis();
 
     void suspendAnalysis();
     void resumeAnalysis();

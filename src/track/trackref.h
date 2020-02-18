@@ -110,6 +110,10 @@ bool operator!=(const TrackRef& lhs, const TrackRef& rhs) {
     return !(lhs == rhs);
 }
 
+inline uint qHash(const TrackRef& key, uint seed) {
+    return qHash(key.getLocation(), seed) ^ qHash(key.getId(), seed);
+}
+
 Q_DECLARE_METATYPE(TrackRef)
 
 std::ostream& operator<<(std::ostream& os, const TrackRef& trackRef);

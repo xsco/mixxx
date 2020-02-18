@@ -116,6 +116,10 @@ inline bool operator!=(const TrackFile& lhs, const TrackFile& rhs) {
     return !(lhs == rhs);
 }
 
+inline uint qHash(const TrackFile& key, uint seed) {
+    return qHash(key.location(), seed);
+}
+
 inline QDebug operator<<(QDebug debug, const TrackFile& trackFile) {
 #if QT_VERSION >= QT_VERSION_CHECK(5, 12, 0)
     return debug << trackFile.asFileInfo();
