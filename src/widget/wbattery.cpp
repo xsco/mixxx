@@ -8,6 +8,7 @@
 WBattery::WBattery(QWidget* parent)
         : WWidget(parent),
           m_pBattery(Battery::getBattery(this)) {
+    setVisible(false);
     if (m_pBattery) {
         connect(m_pBattery.data(), SIGNAL(stateChanged()),
                 this, SLOT(update()));
@@ -20,14 +21,6 @@ void WBattery::setup(const QDomNode& node, const SkinContext& context) {
         setPixmap(&m_pPixmapBack,
                   context.getPixmapSource(backPath),
                   context.selectScaleMode(backPath, Paintable::TILE),
-                  context.getScaleFactor());
-    }
-
-    QDomElement unknownPath = context.selectElement(node, "PixmapUnknown");
-    if (!unknownPath.isNull()) {
-        setPixmap(&m_pPixmapUnknown,
-                  context.getPixmapSource(unknownPath),
-                  context.selectScaleMode(unknownPath, Paintable::TILE),
                   context.getScaleFactor());
     }
 
@@ -91,6 +84,10 @@ int pixmapIndexFromPercentage(double dPercentage, int numPixmaps) {
     return result;
 }
 
+QString WBattery::formatTooltip(double dPercentage) {
+    return QString::number(dPercentage, 'f', 0) + QStringLiteral("%");
+}
+
 void WBattery::update() {
     int minutesLeft = m_pBattery ? m_pBattery->getMinutesLeft() : 0;
     Battery::ChargingState chargingState = m_pBattery ?
@@ -98,10 +95,9 @@ void WBattery::update() {
     double dPercentage = m_pBattery ? m_pBattery->getPercentage() : 0;
 
     if (chargingState != Battery::UNKNOWN) {
-        setBaseTooltip(QString("%1\%").arg(dPercentage, 0, 'f', 0));
-    } else {
-        setBaseTooltip(tr("Battery status unknown."));
+        setBaseTooltip(formatTooltip(dPercentage));
     }
+
     m_pCurrentPixmap.clear();
     switch (chargingState) {
         case Battery::CHARGING:
@@ -130,11 +126,10 @@ void WBattery::update() {
             m_pCurrentPixmap = m_pPixmapCharged;
             appendBaseTooltip("\n" + tr("Battery fully charged."));
             break;
-        case Battery::UNKNOWN:
         default:
-            m_pCurrentPixmap = m_pPixmapUnknown;
             break;
     }
+    setVisible(chargingState != Battery::UNKNOWN);
 
     // call parent's update() to show changes, this should call
     // QWidget::update()

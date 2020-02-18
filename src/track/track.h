@@ -23,6 +23,12 @@ typedef std::weak_ptr<Track> TrackWeakPointer;
 
 Q_DECLARE_METATYPE(TrackPointer);
 
+enum class ExportTrackMetadataResult {
+    Succeeded,
+    Failed,
+    Skipped,
+};
+
 class Track : public QObject {
     Q_OBJECT
 
@@ -183,6 +189,10 @@ class Track : public QObject {
     QString getGenre() const;
     // Set genre
     void setGenre(const QString&);
+    // Returns the track color
+    mixxx::RgbColor::optional_t getColor() const;
+    // Sets the track color
+    void setColor(mixxx::RgbColor::optional_t);
     // Returns the user comment
     QString getComment() const;
     // Sets the user commnet
@@ -234,9 +244,6 @@ class Track : public QObject {
     ConstWaveformPointer getWaveformSummary() const;
     void setWaveformSummary(ConstWaveformPointer pWaveform);
 
-    void setAnalyzerProgress(int progress);
-    int getAnalyzerProgress() const;
-
     // Get the track's main cue point
     CuePosition getCuePoint() const;
     // Set the track's main cue point
@@ -244,9 +251,9 @@ class Track : public QObject {
 
     // Calls for managing the track's cue points
     CuePointer createAndAddCue();
-    CuePointer findCueByType(Cue::CueType type) const; // NOTE: Cannot be used for hotcues.
+    CuePointer findCueByType(Cue::Type type) const; // NOTE: Cannot be used for hotcues.
     void removeCue(const CuePointer& pCue);
-    void removeCuesOfType(Cue::CueType);
+    void removeCuesOfType(Cue::Type);
     QList<CuePointer> getCuePoints() const;
     void setCuePoints(const QList<CuePointer>& cuePoints);
 
@@ -275,14 +282,18 @@ class Track : public QObject {
     quint16 getCoverHash() const;
 
     // Set/get track metadata and cover art (optional) all at once.
-    void setTrackMetadata(
-            mixxx::TrackMetadata trackMetadata,
+    void importMetadata(
+            mixxx::TrackMetadata importedMetadata,
             QDateTime metadataSynchronized);
-    void getTrackMetadata(
+    // Merge additional metadata that is not (yet) stored in the database
+    // and only available from file tags.
+    void mergeImportedMetadata(
+            const mixxx::TrackMetadata& importedMetadata);
+
+    void readTrackMetadata(
             mixxx::TrackMetadata* pTrackMetadata,
             bool* pMetadataSynchronized = nullptr) const;
-
-    void getTrackRecord(
+    void readTrackRecord(
             mixxx::TrackRecord* pTrackRecord,
             bool* pDirty = nullptr) const;
 
@@ -344,12 +355,7 @@ class Track : public QObject {
     };
     double getDuration(DurationRounding rounding) const;
 
-    enum class ExportMetadataResult {
-        Succeeded,
-        Failed,
-        Skipped,
-    };
-    ExportMetadataResult exportMetadata(
+    ExportTrackMetadataResult exportMetadata(
             mixxx::MetadataSourcePointer pMetadataSource);
 
     // Mutex protecting access to object

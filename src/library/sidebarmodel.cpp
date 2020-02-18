@@ -24,36 +24,58 @@ SidebarModel::SidebarModel(
           m_iDefaultSelectedIndex(0),
           m_pressedUntilClickedTimer(new QTimer(this)) {
     m_pressedUntilClickedTimer->setSingleShot(true);
-    connect(m_pressedUntilClickedTimer, SIGNAL(timeout()), this, SLOT(slotPressedUntilClickedTimeout()));
+    connect(m_pressedUntilClickedTimer,
+            &QTimer::timeout,
+            this,
+            &SidebarModel::slotPressedUntilClickedTimeout);
 }
 
 void SidebarModel::addLibraryFeature(LibraryFeature* feature) {
     m_sFeatures.push_back(feature);
-    connect(feature, SIGNAL(featureIsLoading(LibraryFeature*, bool)),
-            this, SLOT(slotFeatureIsLoading(LibraryFeature*, bool)));
-    connect(feature, SIGNAL(featureLoadingFinished(LibraryFeature*)),
-            this, SLOT(slotFeatureLoadingFinished(LibraryFeature*)));
-    connect(feature, SIGNAL(featureSelect(LibraryFeature*, const QModelIndex&)),
-            this, SLOT(slotFeatureSelect(LibraryFeature*, const QModelIndex&)));
+    connect(feature,
+            &LibraryFeature::featureIsLoading,
+            this,
+            &SidebarModel::slotFeatureIsLoading);
+    connect(feature,
+            &LibraryFeature::featureLoadingFinished,
+            this,
+            &SidebarModel::slotFeatureLoadingFinished);
+    connect(feature,
+            &LibraryFeature::featureSelect,
+            this,
+            &SidebarModel::slotFeatureSelect);
 
     QAbstractItemModel* model = feature->getChildModel();
 
-    connect(model, SIGNAL(modelAboutToBeReset()),
-            this, SLOT(slotModelAboutToBeReset()));
-    connect(model, SIGNAL(modelReset()),
-            this, SLOT(slotModelReset()));
-    connect(model, SIGNAL(dataChanged(const QModelIndex&,const QModelIndex&)),
-            this, SLOT(slotDataChanged(const QModelIndex&,const QModelIndex&)));
+    connect(model,
+            &QAbstractItemModel::modelAboutToBeReset,
+            this,
+            &SidebarModel::slotModelAboutToBeReset);
+    connect(model,
+            &QAbstractItemModel::modelReset,
+            this,
+            &SidebarModel::slotModelReset);
+    connect(model,
+            &QAbstractItemModel::dataChanged,
+            this,
+            &SidebarModel::slotDataChanged);
 
-    connect(model, SIGNAL(rowsAboutToBeInserted(const QModelIndex&, int, int)),
-            this, SLOT(slotRowsAboutToBeInserted(const QModelIndex&, int, int)));
-    connect(model, SIGNAL(rowsAboutToBeRemoved(const QModelIndex&, int, int)),
-            this, SLOT(slotRowsAboutToBeRemoved(const QModelIndex&, int, int)));
-    connect(model, SIGNAL(rowsInserted(const QModelIndex&, int, int)),
-            this, SLOT(slotRowsInserted(const QModelIndex&, int, int)));
-    connect(model, SIGNAL(rowsRemoved(const QModelIndex&, int, int)),
-            this, SLOT(slotRowsRemoved(const QModelIndex&, int, int)));
-
+    connect(model,
+            &QAbstractItemModel::rowsAboutToBeInserted,
+            this,
+            &SidebarModel::slotRowsAboutToBeInserted);
+    connect(model,
+            &QAbstractItemModel::rowsAboutToBeRemoved,
+            this,
+            &SidebarModel::slotRowsAboutToBeRemoved);
+    connect(model,
+            &QAbstractItemModel::rowsInserted,
+            this,
+            &SidebarModel::slotRowsInserted);
+    connect(model,
+            &QAbstractItemModel::rowsRemoved,
+            this,
+            &SidebarModel::slotRowsRemoved);
 }
 
 QModelIndex SidebarModel::getDefaultSelection() {
@@ -69,7 +91,7 @@ void SidebarModel::setDefaultSelection(unsigned int index) {
 void SidebarModel::activateDefaultSelection() {
     if (m_iDefaultSelectedIndex <
             static_cast<unsigned int>(m_sFeatures.size())) {
-        emit(selectIndex(getDefaultSelection()));
+        emit selectIndex(getDefaultSelection());
         // Selecting an index does not activate it.
         m_sFeatures[m_iDefaultSelectedIndex]->activate();
     }
@@ -363,7 +385,7 @@ QModelIndex SidebarModel::translateSourceIndex(const QModelIndex& index) {
      * For child models, this always the child models itself
      */
 
-    const QAbstractItemModel* model = dynamic_cast<QAbstractItemModel*>(sender());
+    const QAbstractItemModel* model = qobject_cast<QAbstractItemModel*>(sender());
     VERIFY_OR_DEBUG_ASSERT(model != NULL) {
         return QModelIndex();
     }
@@ -389,7 +411,7 @@ void SidebarModel::slotDataChanged(const QModelIndex& topLeft, const QModelIndex
     //qDebug() << "slotDataChanged topLeft:" << topLeft << "bottomRight:" << bottomRight;
     QModelIndex topLeftTranslated = translateSourceIndex(topLeft);
     QModelIndex bottomRightTranslated = translateSourceIndex(bottomRight);
-    emit(dataChanged(topLeftTranslated, bottomRightTranslated));
+    emit dataChanged(topLeftTranslated, bottomRightTranslated);
 }
 
 void SidebarModel::slotRowsAboutToBeInserted(const QModelIndex& parent, int start, int end) {
@@ -456,7 +478,7 @@ void SidebarModel::featureRenamed(LibraryFeature* pFeature) {
     for (int i=0; i < m_sFeatures.size(); ++i) {
         if (m_sFeatures[i] == pFeature) {
             QModelIndex ind = index(i, 0);
-            emit(dataChanged(ind, ind));
+            emit dataChanged(ind, ind);
         }
     }
 }
@@ -474,5 +496,5 @@ void SidebarModel::slotFeatureSelect(LibraryFeature* pFeature, const QModelIndex
             }
         }
     }
-    emit(selectIndex(ind));
+    emit selectIndex(ind);
 }

@@ -11,16 +11,21 @@
 
 #include "widget/wtracktableview.h"
 
+#include "widget/wcolorpickeraction.h"
 #include "widget/wcoverartmenu.h"
 #include "widget/wskincolor.h"
 #include "widget/wtracktableviewheader.h"
 #include "widget/wwidget.h"
 #include "library/coverartcache.h"
+#include "library/dlgtagfetcher.h"
 #include "library/dlgtrackinfo.h"
 #include "library/librarytablemodel.h"
 #include "library/crate/cratefeaturehelper.h"
 #include "library/dao/trackschema.h"
 #include "library/dlgtrackmetadataexport.h"
+#include "library/externaltrackcollection.h"
+#include "library/trackcollection.h"
+#include "library/trackcollectionmanager.h"
 #include "control/controlobject.h"
 #include "control/controlproxy.h"
 #include "track/track.h"
@@ -34,15 +39,17 @@
 #include "util/assert.h"
 #include "util/parented_ptr.h"
 #include "util/desktophelper.h"
+#include "util/color/predefinedcolorsset.h"
 
 WTrackTableView::WTrackTableView(QWidget * parent,
                                  UserSettingsPointer pConfig,
-                                 TrackCollection* pTrackCollection, bool sorting)
+                                 TrackCollectionManager* pTrackCollectionManager,
+                                 bool sorting)
         : WLibraryTableView(parent, pConfig,
                             ConfigKey(LIBRARY_CONFIGVALUE,
                                       WTRACKTABLEVIEW_VSCROLLBARPOS_KEY)),
           m_pConfig(pConfig),
-          m_pTrackCollection(pTrackCollection),
+          m_pTrackCollectionManager(pTrackCollectionManager),
           m_sorting(sorting),
           m_iCoverSourceColumn(-1),
           m_iCoverTypeColumn(-1),
@@ -53,16 +60,6 @@ WTrackTableView::WTrackTableView(QWidget * parent,
           m_loadCachedOnly(false),
           m_bPlaylistMenuLoaded(false),
           m_bCrateMenuLoaded(false) {
-
-    connect(&m_loadTrackMapper, SIGNAL(mapped(QString)),
-            this, SLOT(loadSelectionToGroup(QString)));
-
-    connect(&m_deckMapper, SIGNAL(mapped(QString)),
-            this, SLOT(loadSelectionToGroup(QString)));
-    connect(&m_samplerMapper, SIGNAL(mapped(QString)),
-            this, SLOT(loadSelectionToGroup(QString)));
-    connect(&m_BpmMapper, SIGNAL(mapped(int)),
-            this, SLOT(slotScaleBpm(int)));
 
     m_pNumSamplers = new ControlProxy(
             "[Master]", "num_samplers", this);
@@ -90,10 +87,16 @@ WTrackTableView::WTrackTableView(QWidget * parent,
             this, SLOT(slotPopulateCrateMenu()));
 
     m_pMetadataMenu = new QMenu(this);
-    m_pMetadataMenu->setTitle("Metadata");
+    m_pMetadataMenu->setTitle(tr("Metadata"));
+
+    m_pMetadataUpdateExternalCollectionsMenu = new QMenu(this);
+    m_pMetadataUpdateExternalCollectionsMenu->setTitle(tr("Update external collections"));
 
     m_pBPMMenu = new QMenu(this);
-    m_pBPMMenu->setTitle(tr("Change BPM"));
+    m_pBPMMenu->setTitle(tr("Adjust BPM"));
+
+    m_pColorMenu = new QMenu(this);
+    m_pColorMenu->setTitle(tr("Select Color"));
 
     m_pClearMetadataMenu = new QMenu(this);
     //: Reset metadata in right click track context menu in library
@@ -114,12 +117,6 @@ WTrackTableView::WTrackTableView(QWidget * parent,
     // Connect slots and signals to make the world go 'round.
     connect(this, SIGNAL(doubleClicked(const QModelIndex &)),
             this, SLOT(slotMouseDoubleClicked(const QModelIndex &)));
-
-    connect(&m_playlistMapper, SIGNAL(mapped(int)),
-            this, SLOT(addSelectionToPlaylist(int)));
-
-    connect(&m_crateMapper, SIGNAL(mapped(QWidget *)),
-            this, SLOT(updateSelectionCrates(QWidget *)));
 
     m_pCOTGuiTick = new ControlProxy("[Master]", "guiTick50ms", this);
     m_pCOTGuiTick->connectValueChanged(this, &WTrackTableView::slotGuiTick50ms);
@@ -179,10 +176,13 @@ WTrackTableView::~WTrackTableView() {
     delete m_pBpmFourThirdsAction;
     delete m_pBpmThreeHalvesAction;
     delete m_pBPMMenu;
+    delete m_pColorMenu;
     delete m_pClearBeatsAction;
     delete m_pClearPlayCountAction;
     delete m_pClearMainCueAction;
     delete m_pClearHotCuesAction;
+    delete m_pClearIntroCueAction;
+    delete m_pClearOutroCueAction;
     delete m_pClearLoopAction;
     delete m_pClearReplayGainAction;
     delete m_pClearWaveformAction;
@@ -195,7 +195,7 @@ void WTrackTableView::enableCachedOnly() {
     if (!m_loadCachedOnly) {
         // don't try to load and search covers, drawing only
         // covers which are already in the QPixmapCache.
-        emit(onlyCachedCoverArt(true));
+        emit onlyCachedCoverArt(true);
         m_loadCachedOnly = true;
     }
     m_lastUserAction = mixxx::Time::elapsed();
@@ -218,28 +218,31 @@ void WTrackTableView::slotGuiTick50ms(double /*unused*/) {
     mixxx::Duration timeDelta = mixxx::Time::elapsed() - m_lastUserAction;
     if (m_loadCachedOnly && timeDelta > mixxx::Duration::fromMillis(100)) {
 
-        // Show the currently selected track in the large cover art view. Doing
-        // this in selectionChanged slows down scrolling performance so we wait
-        // until the user has stopped interacting first.
+        // Show the currently selected track in the large cover art view and
+        // highlights crate and playlists. Doing this in selectionChanged
+        // slows down scrolling performance so we wait until the user has
+        // stopped interacting first.
         if (m_selectionChangedSinceLastGuiTick) {
             const QModelIndexList indices = selectionModel()->selectedRows();
-            if (indices.size() > 0 && indices.last().isValid()) {
+            if (indices.size() == 1 && indices.first().isValid()) {
+                // A single track has been selected
                 TrackModel* trackModel = getTrackModel();
                 if (trackModel) {
-                    TrackPointer pTrack = trackModel->getTrack(indices.last());
+                    TrackPointer pTrack = trackModel->getTrack(indices.first());
                     if (pTrack) {
-                        emit(trackSelected(pTrack));
+                        emit trackSelected(pTrack);
                     }
                 }
             } else {
-                emit(trackSelected(TrackPointer()));
+                // None or multiple tracks have been selected
+                emit trackSelected(TrackPointer());
             }
             m_selectionChangedSinceLastGuiTick = false;
         }
 
         // This allows CoverArtDelegate to request that we load covers from disk
         // (as opposed to only serving them from cache).
-        emit(onlyCachedCoverArt(false));
+        emit onlyCachedCoverArt(false);
         m_loadCachedOnly = false;
     }
 }
@@ -266,7 +269,7 @@ void WTrackTableView::loadTrackModel(QAbstractItemModel *model) {
     if (getTrackModel() == trackModel) {
         // Re-sort the table even if the track model is the same. This triggers
         // a select() if the table is dirty.
-        doSortByColumn(horizontalHeader()->sortIndicatorSection());
+        doSortByColumn(horizontalHeader()->sortIndicatorSection(), horizontalHeader()->sortIndicatorOrder());
         return;
     }else{
         newModel = trackModel;
@@ -453,17 +456,17 @@ void WTrackTableView::createActions() {
     connect(m_pFileBrowserAct, SIGNAL(triggered()),
             this, SLOT(slotOpenInFileBrowser()));
 
-    m_pAutoDJBottomAct = new QAction(tr("Add to Auto DJ Queue (Bottom)"), this);
+    m_pAutoDJBottomAct = new QAction(tr("Add to Auto DJ Queue (bottom)"), this);
     connect(m_pAutoDJBottomAct, SIGNAL(triggered()),
-            this, SLOT(slotSendToAutoDJBottom()));
+            this, SLOT(slotAddToAutoDJBottom()));
 
-    m_pAutoDJTopAct = new QAction(tr("Add to Auto DJ Queue (Top)"), this);
+    m_pAutoDJTopAct = new QAction(tr("Add to Auto DJ Queue (top)"), this);
     connect(m_pAutoDJTopAct, SIGNAL(triggered()),
-            this, SLOT(slotSendToAutoDJTop()));
+            this, SLOT(slotAddToAutoDJTop()));
 
-    m_pAutoDJReplaceAct = new QAction(tr("Add to Auto DJ Queue (Replace)"), this);
+    m_pAutoDJReplaceAct = new QAction(tr("Add to Auto DJ Queue (replace)"), this);
     connect(m_pAutoDJReplaceAct, SIGNAL(triggered()),
-            this, SLOT(slotSendToAutoDJReplace()));
+            this, SLOT(slotAddToAutoDJReplace()));
 
     m_pImportMetadataFromFileAct = new QAction(tr("Import From File Tags"), this);
     connect(m_pImportMetadataFromFileAct, SIGNAL(triggered()),
@@ -477,12 +480,24 @@ void WTrackTableView::createActions() {
     connect(m_pExportMetadataAct, SIGNAL(triggered()),
             this, SLOT(slotExportTrackMetadataIntoFileTags()));
 
+    for (const auto& externalTrackCollection : m_pTrackCollectionManager->externalCollections()) {
+        UpdateExternalTrackCollection updateInExternalTrackCollection;
+        updateInExternalTrackCollection.externalTrackCollection = externalTrackCollection;
+        updateInExternalTrackCollection.action = new QAction(externalTrackCollection->name(), this);
+        updateInExternalTrackCollection.action->setToolTip(externalTrackCollection->description());
+        m_updateInExternalTrackCollections += updateInExternalTrackCollection;
+        auto externalTrackCollectionPtr = updateInExternalTrackCollection.externalTrackCollection;
+        connect(updateInExternalTrackCollection.action, &QAction::triggered,
+                this, [this, externalTrackCollectionPtr] {
+                    slotUpdateExternalTrackCollection(externalTrackCollectionPtr);
+                });
+        }
+
     m_pAddToPreviewDeck = new QAction(tr("Preview Deck"), this);
     // currently there is only one preview deck so just map it here.
     QString previewDeckGroup = PlayerManager::groupForPreviewDeck(0);
-    m_deckMapper.setMapping(m_pAddToPreviewDeck, previewDeckGroup);
-    connect(m_pAddToPreviewDeck, SIGNAL(triggered()),
-            &m_deckMapper, SLOT(map()));
+    connect(m_pAddToPreviewDeck, &QAction::triggered,
+            this, [this, previewDeckGroup] { loadSelectionToGroup(previewDeckGroup); });
 
 
     // Clear metadata actions
@@ -501,6 +516,14 @@ void WTrackTableView::createActions() {
     m_pClearHotCuesAction = new QAction(tr("Hotcues"), this);
     connect(m_pClearHotCuesAction, SIGNAL(triggered()),
             this, SLOT(slotClearHotCues()));
+
+    m_pClearIntroCueAction = new QAction(tr("Intro"), this);
+    connect(m_pClearIntroCueAction, SIGNAL(triggered()),
+            this, SLOT(slotClearIntroCue()));
+
+    m_pClearOutroCueAction = new QAction(tr("Outro"), this);
+    connect(m_pClearOutroCueAction, SIGNAL(triggered()),
+            this, SLOT(slotClearOutroCue()));
 
     m_pClearLoopAction = new QAction(tr("Loop"), this);
     connect(m_pClearLoopAction, SIGNAL(triggered()),
@@ -538,25 +561,25 @@ void WTrackTableView::createActions() {
     m_pBpmFourThirdsAction = new QAction(tr("4/3 BPM"), this);
     m_pBpmThreeHalvesAction = new QAction(tr("3/2 BPM"), this);
 
-    m_BpmMapper.setMapping(m_pBpmDoubleAction, Beats::DOUBLE);
-    m_BpmMapper.setMapping(m_pBpmHalveAction, Beats::HALVE);
-    m_BpmMapper.setMapping(m_pBpmTwoThirdsAction, Beats::TWOTHIRDS);
-    m_BpmMapper.setMapping(m_pBpmThreeFourthsAction, Beats::THREEFOURTHS);
-    m_BpmMapper.setMapping(m_pBpmFourThirdsAction, Beats::FOURTHIRDS);
-    m_BpmMapper.setMapping(m_pBpmThreeHalvesAction, Beats::THREEHALVES);
+    connect(m_pBpmDoubleAction, &QAction::triggered,
+            this, [this] { slotScaleBpm(Beats::DOUBLE); });
+    connect(m_pBpmHalveAction, &QAction::triggered,
+            this, [this] { slotScaleBpm(Beats::HALVE); });
+    connect(m_pBpmTwoThirdsAction, &QAction::triggered,
+            this, [this] { slotScaleBpm(Beats::TWOTHIRDS); });
+    connect(m_pBpmThreeFourthsAction, &QAction::triggered,
+            this, [this] { slotScaleBpm(Beats::THREEFOURTHS); });
+    connect(m_pBpmFourThirdsAction, &QAction::triggered,
+            this, [this] { slotScaleBpm(Beats::FOURTHIRDS); });
+    connect(m_pBpmThreeHalvesAction, &QAction::triggered,
+            this, [this] { slotScaleBpm(Beats::THREEHALVES); });
 
-    connect(m_pBpmDoubleAction, SIGNAL(triggered()),
-            &m_BpmMapper, SLOT(map()));
-    connect(m_pBpmHalveAction, SIGNAL(triggered()),
-            &m_BpmMapper, SLOT(map()));
-    connect(m_pBpmTwoThirdsAction, SIGNAL(triggered()),
-            &m_BpmMapper, SLOT(map()));
-    connect(m_pBpmThreeFourthsAction, SIGNAL(triggered()),
-            &m_BpmMapper, SLOT(map()));
-    connect(m_pBpmFourThirdsAction, SIGNAL(triggered()),
-            &m_BpmMapper, SLOT(map()));
-    connect(m_pBpmThreeHalvesAction, SIGNAL(triggered()),
-            &m_BpmMapper, SLOT(map()));
+    m_pColorPickerAction = new WColorPickerAction(WColorPicker::ColorOption::AllowNoColor, this);
+    m_pColorPickerAction->setObjectName("TrackColorPickerAction");
+    connect(m_pColorPickerAction,
+            &WColorPickerAction::colorPicked,
+            this,
+            &WTrackTableView::slotColorPicked);
 }
 
 // slot
@@ -580,13 +603,13 @@ void WTrackTableView::slotMouseDoubleClicked(const QModelIndex &index) {
             return;
         }
 
-        emit(loadTrack(pTrack));
+        emit loadTrack(pTrack);
     } else if (doubleClickAction == DlgPrefLibrary::ADD_TO_AUTODJ_BOTTOM
         && modelHasCapabilities(TrackModel::TRACKMODELCAPS_ADDTOAUTODJ)) {
-        sendToAutoDJ(PlaylistDAO::AutoDJSendLoc::BOTTOM);
+        addToAutoDJ(PlaylistDAO::AutoDJSendLoc::BOTTOM);
     } else if (doubleClickAction == DlgPrefLibrary::ADD_TO_AUTODJ_TOP
         && modelHasCapabilities(TrackModel::TRACKMODELCAPS_ADDTOAUTODJ)) {
-        sendToAutoDJ(PlaylistDAO::AutoDJSendLoc::TOP);
+        addToAutoDJ(PlaylistDAO::AutoDJSendLoc::TOP);
     }
 }
 
@@ -608,7 +631,7 @@ void WTrackTableView::loadSelectionToGroup(QString group, bool play) {
         TrackPointer pTrack;
         if (trackModel &&
                 (pTrack = trackModel->getTrack(index))) {
-            emit(loadTrackToPlayer(pTrack, group, play));
+            emit loadTrackToPlayer(pTrack, group, play);
         }
     }
 }
@@ -639,7 +662,7 @@ void WTrackTableView::slotOpenInFileBrowser() {
         return;
     }
 
-    QModelIndexList indices = selectionModel()->selectedRows();
+    const QModelIndexList indices = selectionModel()->selectedRows();
 
     QStringList locations;
     for (const QModelIndex& index : indices) {
@@ -838,8 +861,8 @@ void WTrackTableView::contextMenuEvent(QContextMenuEvent* event) {
                 QAction* pAction = new QAction(tr("Deck %1").arg(i), m_pMenu);
                 pAction->setEnabled(deckEnabled);
                 m_pDeckMenu->addAction(pAction);
-                m_deckMapper.setMapping(pAction, deckGroup);
-                connect(pAction, SIGNAL(triggered()), &m_deckMapper, SLOT(map()));
+                connect(pAction, &QAction::triggered,
+                        this, [this, deckGroup] { loadSelectionToGroup(deckGroup); });
             }
         }
         m_pLoadToMenu->addMenu(m_pDeckMenu);
@@ -858,8 +881,9 @@ void WTrackTableView::contextMenuEvent(QContextMenuEvent* event) {
                 QAction* pAction = new QAction(tr("Sampler %1").arg(i), m_pSamplerMenu);
                 pAction->setEnabled(samplerEnabled);
                 m_pSamplerMenu->addAction(pAction);
-                m_samplerMapper.setMapping(pAction, samplerGroup);
-                connect(pAction, SIGNAL(triggered()), &m_samplerMapper, SLOT(map()));
+                connect(pAction, &QAction::triggered,
+                        this, [this, samplerGroup] {loadSelectionToGroup(samplerGroup); } );
+
             }
             m_pLoadToMenu->addMenu(m_pSamplerMenu);
         }
@@ -904,6 +928,7 @@ void WTrackTableView::contextMenuEvent(QContextMenuEvent* event) {
 
     m_pMenu->addSeparator();
     m_pMetadataMenu->clear();
+    m_pMetadataUpdateExternalCollectionsMenu->clear();
 
     if (modelHasCapabilities(TrackModel::TRACKMODELCAPS_EDITMETADATA)) {
         m_pMetadataMenu->addAction(m_pImportMetadataFromFileAct);
@@ -911,13 +936,41 @@ void WTrackTableView::contextMenuEvent(QContextMenuEvent* event) {
         m_pMetadataMenu->addAction(m_pImportMetadataFromMusicBrainzAct);
         m_pMetadataMenu->addAction(m_pExportMetadataAct);
 
+        for (const auto& updateInExternalTrackCollection : m_updateInExternalTrackCollections) {
+            ExternalTrackCollection* externalTrackCollection =
+                    updateInExternalTrackCollection.externalTrackCollection;
+            if (externalTrackCollection) {
+                updateInExternalTrackCollection.action->setEnabled(
+                        externalTrackCollection->isConnected());
+                m_pMetadataUpdateExternalCollectionsMenu->addAction(
+                        updateInExternalTrackCollection.action);
+            }
+        }
+        if (!m_pMetadataUpdateExternalCollectionsMenu->isEmpty()) {
+            m_pMetadataMenu->addMenu(m_pMetadataUpdateExternalCollectionsMenu);
+        }
+
+        for (const auto& updateInExternalTrackCollection : m_updateInExternalTrackCollections) {
+            ExternalTrackCollection* externalTrackCollection =
+                    updateInExternalTrackCollection.externalTrackCollection;
+            if (externalTrackCollection) {
+                updateInExternalTrackCollection.action->setEnabled(
+                        externalTrackCollection->isConnected());
+                m_pMetadataUpdateExternalCollectionsMenu->addAction(
+                        updateInExternalTrackCollection.action);
+            }
+        }
+        if (!m_pMetadataUpdateExternalCollectionsMenu->isEmpty()) {
+            m_pMetadataMenu->addMenu(m_pMetadataUpdateExternalCollectionsMenu);
+        }
+
         m_pClearMetadataMenu->clear();
 
         if (trackModel == nullptr) {
             return;
         }
         bool allowClear = true;
-        int column = trackModel->fieldIndex("bpm_lock");
+        int column = trackModel->fieldIndex(LIBRARYTABLE_BPM_LOCK);
         for (int i = 0; i < indices.size() && allowClear; ++i) {
             int row = indices.at(i).row();
             QModelIndex index = indices.at(i).sibling(row,column);
@@ -937,6 +990,8 @@ void WTrackTableView::contextMenuEvent(QContextMenuEvent* event) {
         // FIXME: Why is clearing the loop not working?
         m_pClearMetadataMenu->addAction(m_pClearMainCueAction);
         m_pClearMetadataMenu->addAction(m_pClearHotCuesAction);
+        m_pClearMetadataMenu->addAction(m_pClearIntroCueAction);
+        m_pClearMetadataMenu->addAction(m_pClearOutroCueAction);
         //m_pClearMetadataMenu->addAction(m_pClearLoopAction);
         m_pClearMetadataMenu->addAction(m_pClearKeyAction);
         m_pClearMetadataMenu->addAction(m_pClearReplayGainAction);
@@ -980,7 +1035,7 @@ void WTrackTableView::contextMenuEvent(QContextMenuEvent* event) {
             if (trackModel == nullptr) {
                 return;
             }
-            int column = trackModel->fieldIndex("bpm_lock");
+            int column = trackModel->fieldIndex(LIBRARYTABLE_BPM_LOCK);
             QModelIndex index = indices.at(0).sibling(indices.at(0).row(),column);
             if (index.data().toBool()) { //BPM is locked
                 m_pBpmUnlockAction->setEnabled(true);
@@ -1003,7 +1058,7 @@ void WTrackTableView::contextMenuEvent(QContextMenuEvent* event) {
             }
         } else {
             bool anyLocked = false; //true if any of the selected items are locked
-            int column = trackModel->fieldIndex("bpm_lock");
+            int column = trackModel->fieldIndex(LIBRARYTABLE_BPM_LOCK);
             for (int i = 0; i < indices.size() && !anyLocked; ++i) {
                 int row = indices.at(i).row();
                 QModelIndex index = indices.at(i).sibling(row,column);
@@ -1032,6 +1087,50 @@ void WTrackTableView::contextMenuEvent(QContextMenuEvent* event) {
             }
         }
         m_pMenu->addMenu(m_pBPMMenu);
+
+        // Track color menu only appears if at least one track is selected
+        if (indices.size()) {
+            // Get color of first selected track
+            int column = trackModel->fieldIndex(LIBRARYTABLE_COLOR);
+            QModelIndex index = indices.at(0).sibling(indices.at(0).row(), column);
+            mixxx::RgbColor::optional_t trackColor = mixxx::RgbColor::optional(index.data());
+
+            // Check if all other selected tracks have the same color
+            bool multipleTrackColors = false;
+            for (int i = 1; i < indices.size(); ++i) {
+                int row = indices.at(i).row();
+                QModelIndex index = indices.at(i).sibling(row, column);
+
+                mixxx::RgbColor::optional_t otherTrackColor = mixxx::RgbColor::optional(index.data());
+                if (trackColor != otherTrackColor) {
+                    trackColor = std::nullopt;
+                    multipleTrackColors = true;
+                    break;
+                }
+            }
+
+            // Get the predefined color of the selected tracks. If they have
+            // different colors, do not preselect a color (by using nullptr
+            // instead).
+            PredefinedColorPointer predefinedTrackColor = nullptr;
+
+            if (trackColor) {
+                // All tracks have the same color
+                for (PredefinedColorPointer color : Color::kPredefinedColorsSet.allColors) {
+                    if (mixxx::RgbColor(color->m_defaultRgba.rgb()) == *trackColor) {
+                        predefinedTrackColor = color;
+                        break;
+                    }
+                }
+            } else if (!multipleTrackColors) {
+                // All tracks have no color
+                predefinedTrackColor = Color::kPredefinedColorsSet.noColor;
+            }
+
+            m_pColorPickerAction->setSelectedColor(predefinedTrackColor);
+            m_pColorMenu->addAction(m_pColorPickerAction);
+            m_pMenu->addMenu(m_pColorMenu);
+        }
     }
 
     m_pMenu->addSeparator();
@@ -1096,7 +1195,7 @@ void WTrackTableView::mouseMoveEvent(QMouseEvent* pEvent) {
     //qDebug() << "MouseMoveEvent";
     // Iterate over selected rows and append each item's location url to a list.
     QList<QString> locations;
-    QModelIndexList indices = selectionModel()->selectedRows();
+    const QModelIndexList indices = selectionModel()->selectedRows();
 
     for (const QModelIndex& index : indices) {
         if (!index.isValid()) {
@@ -1195,7 +1294,7 @@ void WTrackTableView::dropEvent(QDropEvent * event) {
         // Save a list of row (just plain ints) so we don't get screwed over
         // when the QModelIndexes all become invalid (eg. after moveTrack()
         // or addTrack())
-        QModelIndexList indices = selectionModel()->selectedRows();
+        const QModelIndexList indices = selectionModel()->selectedRows();
 
         QList<int> selectedRows;
         for (const QModelIndex& idx : indices) {
@@ -1284,12 +1383,12 @@ void WTrackTableView::dropEvent(QDropEvent * event) {
         this->selectionModel()->clear();
 
         // Add all the dropped URLs/tracks to the track model (playlist/crate)
-        QList<QFileInfo> fileList = DragAndDropHelper::supportedTracksFromUrls(
+        QList<TrackFile> trackFiles = DragAndDropHelper::supportedTracksFromUrls(
             event->mimeData()->urls(), false, true);
 
         QList<QString> fileLocationList;
-        for (const QFileInfo& fileInfo : fileList) {
-            fileLocationList.append(TrackFile(fileInfo).location());
+        for (const TrackFile& trackFile : trackFiles) {
+            fileLocationList.append(trackFile.location());
         }
 
         // Drag-and-drop from an external application
@@ -1370,17 +1469,17 @@ void WTrackTableView::loadSelectedTrackToGroup(QString group, bool play) {
     loadSelectionToGroup(group, play);
 }
 
-void WTrackTableView::slotSendToAutoDJBottom() {
+void WTrackTableView::slotAddToAutoDJBottom() {
     // append to auto DJ
-    sendToAutoDJ(PlaylistDAO::AutoDJSendLoc::BOTTOM);
+    addToAutoDJ(PlaylistDAO::AutoDJSendLoc::BOTTOM);
 }
 
-void WTrackTableView::slotSendToAutoDJTop() {
-    sendToAutoDJ(PlaylistDAO::AutoDJSendLoc::TOP);
+void WTrackTableView::slotAddToAutoDJTop() {
+    addToAutoDJ(PlaylistDAO::AutoDJSendLoc::TOP);
 }
 
-void WTrackTableView::slotSendToAutoDJReplace() {
-    sendToAutoDJ(PlaylistDAO::AutoDJSendLoc::REPLACE);
+void WTrackTableView::slotAddToAutoDJReplace() {
+    addToAutoDJ(PlaylistDAO::AutoDJSendLoc::REPLACE);
 }
 
 QList<TrackId> WTrackTableView::getSelectedTrackIds() const {
@@ -1439,7 +1538,7 @@ void WTrackTableView::setSelectedTracks(const QList<TrackId>& trackIds) {
 }
 
 
-void WTrackTableView::sendToAutoDJ(PlaylistDAO::AutoDJSendLoc loc) {
+void WTrackTableView::addToAutoDJ(PlaylistDAO::AutoDJSendLoc loc) {
     if (!modelHasCapabilities(TrackModel::TRACKMODELCAPS_ADDTOAUTODJ)) {
         return;
     }
@@ -1450,11 +1549,11 @@ void WTrackTableView::sendToAutoDJ(PlaylistDAO::AutoDJSendLoc loc) {
         return;
     }
 
-    PlaylistDAO& playlistDao = m_pTrackCollection->getPlaylistDAO();
+    PlaylistDAO& playlistDao = m_pTrackCollectionManager->internalCollection()->getPlaylistDAO();
 
     // TODO(XXX): Care whether the append succeeded.
-    m_pTrackCollection->unhideTracks(trackIds);
-    playlistDao.sendToAutoDJ(trackIds, loc);
+    m_pTrackCollectionManager->unhideTracks(trackIds);
+    playlistDao.addTracksToAutoDJQueue(trackIds, loc);
 }
 
 void WTrackTableView::slotImportTrackMetadataFromFileTags() {
@@ -1462,7 +1561,7 @@ void WTrackTableView::slotImportTrackMetadataFromFileTags() {
         return;
     }
 
-    QModelIndexList indices = selectionModel()->selectedRows();
+    const QModelIndexList indices = selectionModel()->selectedRows();
 
     TrackModel* trackModel = getTrackModel();
 
@@ -1492,7 +1591,7 @@ void WTrackTableView::slotExportTrackMetadataIntoFileTags() {
         return;
     }
 
-    QModelIndexList indices = selectionModel()->selectedRows();
+    const QModelIndexList indices = selectionModel()->selectedRows();
     if (indices.isEmpty()) {
         return;
     }
@@ -1512,9 +1611,41 @@ void WTrackTableView::slotExportTrackMetadataIntoFileTags() {
     }
 }
 
+void WTrackTableView::slotUpdateExternalTrackCollection(
+        ExternalTrackCollection* externalTrackCollection) {
+    VERIFY_OR_DEBUG_ASSERT(externalTrackCollection) {
+        return;
+    }
+
+    if (!modelHasCapabilities(TrackModel::TRACKMODELCAPS_EDITMETADATA)) {
+        return;
+    }
+
+    TrackModel* pTrackModel = getTrackModel();
+    if (!pTrackModel) {
+        return;
+    }
+
+    const QModelIndexList indices = selectionModel()->selectedRows();
+    if (indices.isEmpty()) {
+        return;
+    }
+
+    QList<TrackRef> trackRefs;
+    trackRefs.reserve(indices.size());
+    for (const QModelIndex& index : indices) {
+        trackRefs.append(
+                TrackRef::fromFileInfo(
+                        pTrackModel->getTrackLocation(index),
+                        pTrackModel->getTrackId(index)));
+    }
+
+    externalTrackCollection->updateTracks(std::move(trackRefs));
+}
+
 //slot for reset played count, sets count to 0 of one or more tracks
 void WTrackTableView::slotClearPlayCount() {
-    QModelIndexList indices = selectionModel()->selectedRows();
+    const QModelIndexList indices = selectionModel()->selectedRows();
     TrackModel* trackModel = getTrackModel();
 
     if (trackModel == nullptr) {
@@ -1537,7 +1668,7 @@ void WTrackTableView::slotPopulatePlaylistMenu() {
         return;
     }
     m_pPlaylistMenu->clear();
-    PlaylistDAO& playlistDao = m_pTrackCollection->getPlaylistDAO();
+    PlaylistDAO& playlistDao = m_pTrackCollectionManager->internalCollection()->getPlaylistDAO();
     QMap<QString,int> playlists;
     int numPlaylists = playlistDao.playlistCount();
     for (int i = 0; i < numPlaylists; ++i) {
@@ -1554,15 +1685,17 @@ void WTrackTableView::slotPopulatePlaylistMenu() {
             bool locked = playlistDao.isPlaylistLocked(it.value());
             pAction->setEnabled(!locked);
             m_pPlaylistMenu->addAction(pAction);
-            m_playlistMapper.setMapping(pAction, it.value());
-            connect(pAction, SIGNAL(triggered()), &m_playlistMapper, SLOT(map()));
+            int iPlaylistId = it.value();
+            connect(pAction, &QAction::triggered,
+                    this, [this, iPlaylistId] { addSelectionToPlaylist(iPlaylistId); });
+
         }
     }
     m_pPlaylistMenu->addSeparator();
     QAction* newPlaylistAction = new QAction(tr("Create New Playlist"), m_pPlaylistMenu);
     m_pPlaylistMenu->addAction(newPlaylistAction);
-    m_playlistMapper.setMapping(newPlaylistAction, -1);// -1 to signify new playlist
-    connect(newPlaylistAction, SIGNAL(triggered()), &m_playlistMapper, SLOT(map()));
+    connect(newPlaylistAction, &QAction::triggered,
+            this, [this] { addSelectionToPlaylist(-1); });
     m_bPlaylistMenuLoaded = true;
 }
 
@@ -1573,7 +1706,7 @@ void WTrackTableView::addSelectionToPlaylist(int iPlaylistId) {
         return;
     }
 
-    PlaylistDAO& playlistDao = m_pTrackCollection->getPlaylistDAO();
+    PlaylistDAO& playlistDao = m_pTrackCollectionManager->internalCollection()->getPlaylistDAO();
 
     if (iPlaylistId == -1) { // i.e. a new playlist is suppose to be created
         QString name;
@@ -1613,7 +1746,7 @@ void WTrackTableView::addSelectionToPlaylist(int iPlaylistId) {
     }
 
     // TODO(XXX): Care whether the append succeeded.
-    m_pTrackCollection->unhideTracks(trackIds);
+    m_pTrackCollectionManager->unhideTracks(trackIds);
     playlistDao.appendTracksToPlaylist(trackIds, iPlaylistId);
 }
 
@@ -1627,7 +1760,7 @@ void WTrackTableView::slotPopulateCrateMenu() {
     m_pCrateMenu->clear();
     const QList<TrackId> trackIds = getSelectedTrackIds();
 
-    CrateSummarySelectResult allCrates(m_pTrackCollection->crates().selectCratesWithTrackCount(trackIds));
+    CrateSummarySelectResult allCrates(m_pTrackCollectionManager->internalCollection()->crates().selectCratesWithTrackCount(trackIds));
 
     CrateSummary crate;
     while (allCrates.populateNext(&crate)) {
@@ -1644,11 +1777,14 @@ void WTrackTableView::slotPopulateCrateMenu() {
         // with the mouse, but not with the keyboard. :focus works for the
         // keyboard but with the mouse, the last clicked item keeps the style
         // after the mouse cursor is moved to hover over another item.
-        pCheckBox->setStyleSheet(
-            QString("QCheckBox {color: %1;}").arg(
-                    pCheckBox->palette().text().color().name()) + "\n" +
-            QString("QCheckBox:hover {background-color: %1;}").arg(
-                    pCheckBox->palette().highlight().color().name()));
+
+        // ronso0 Disabling this stylesheet allows to override the OS style
+        // of the :hover and :focus state.
+//        pCheckBox->setStyleSheet(
+//            QString("QCheckBox {color: %1;}").arg(
+//                    pCheckBox->palette().text().color().name()) + "\n" +
+//            QString("QCheckBox:hover {background-color: %1;}").arg(
+//                    pCheckBox->palette().highlight().color().name()));
         pAction->setEnabled(!crate.isLocked());
         pAction->setDefaultWidget(pCheckBox.get());
 
@@ -1661,13 +1797,11 @@ void WTrackTableView::slotPopulateCrateMenu() {
             pCheckBox->setCheckState(Qt::PartiallyChecked);
         }
 
-        m_crateMapper.setMapping(pAction.get(), pCheckBox.get());
-        m_crateMapper.setMapping(pCheckBox.get(), pCheckBox.get());
         m_pCrateMenu->addAction(pAction.get());
-        connect(pAction.get(), SIGNAL(triggered()),
-                &m_crateMapper, SLOT(map()));
-        connect(pCheckBox.get(), SIGNAL(stateChanged(int)),
-                &m_crateMapper, SLOT(map()));
+        connect(pAction.get(), &QAction::triggered,
+                this, [this, pCheckBox{pCheckBox.get()}] { updateSelectionCrates(pCheckBox); });
+        connect(pCheckBox.get(), &QCheckBox::stateChanged,
+                this, [this, pCheckBox{pCheckBox.get()}] { updateSelectionCrates(pCheckBox); });
 
     }
     m_pCrateMenu->addSeparator();
@@ -1696,16 +1830,16 @@ void WTrackTableView::updateSelectionCrates(QWidget* pWidget) {
     pCheckBox->setTristate(false);
     if(!pCheckBox->isChecked()) {
         if (crateId.isValid()) {
-            m_pTrackCollection->removeCrateTracks(crateId, trackIds);
+            m_pTrackCollectionManager->internalCollection()->removeCrateTracks(crateId, trackIds);
         }
     } else {
         if (!crateId.isValid()) { // i.e. a new crate is suppose to be created
             crateId = CrateFeatureHelper(
-                    m_pTrackCollection, m_pConfig).createEmptyCrate();
+                    m_pTrackCollectionManager->internalCollection(), m_pConfig).createEmptyCrate();
         }
         if (crateId.isValid()) {
-            m_pTrackCollection->unhideTracks(trackIds);
-            m_pTrackCollection->addCrateTracks(crateId, trackIds);
+            m_pTrackCollectionManager->unhideTracks(trackIds);
+            m_pTrackCollectionManager->internalCollection()->addCrateTracks(crateId, trackIds);
         }
     }
 }
@@ -1719,16 +1853,16 @@ void WTrackTableView::addSelectionToNewCrate() {
     }
 
     CrateId crateId = CrateFeatureHelper(
-            m_pTrackCollection, m_pConfig).createEmptyCrate();
+            m_pTrackCollectionManager->internalCollection(), m_pConfig).createEmptyCrate();
 
     if (crateId.isValid()) {
-        m_pTrackCollection->unhideTracks(trackIds);
-        m_pTrackCollection->addCrateTracks(crateId, trackIds);
+        m_pTrackCollectionManager->unhideTracks(trackIds);
+        m_pTrackCollectionManager->internalCollection()->addCrateTracks(crateId, trackIds);
     }
 
 }
 
-void WTrackTableView::doSortByColumn(int headerSection) {
+void WTrackTableView::doSortByColumn(int headerSection, Qt::SortOrder sortOrder) {
     TrackModel* trackModel = getTrackModel();
     QAbstractItemModel* itemModel = model();
 
@@ -1740,7 +1874,7 @@ void WTrackTableView::doSortByColumn(int headerSection) {
     const QList<TrackId> selectedTrackIds = getSelectedTrackIds();
     int savedHScrollBarPos = horizontalScrollBar()->value();
 
-    sortByColumn(headerSection);
+    sortByColumn(headerSection, sortOrder);
 
     QItemSelectionModel* currentSelection = selectionModel();
     currentSelection->reset(); // remove current selection
@@ -1807,7 +1941,7 @@ void WTrackTableView::applySorting() {
     horizontalHeader()->setSortIndicator(sortColumn, sortOrder);
 
     // in Qt5, we need to call it manually, which triggers finally the select()
-    doSortByColumn(sortColumn);
+    doSortByColumn(sortColumn, sortOrder);
 }
 
 void WTrackTableView::slotLockBpm() {
@@ -1824,7 +1958,7 @@ void WTrackTableView::slotScaleBpm(int scale) {
         return;
     }
 
-    QModelIndexList selectedTrackIndices = selectionModel()->selectedRows();
+    const QModelIndexList selectedTrackIndices = selectionModel()->selectedRows();
     for (const auto& index : selectedTrackIndices) {
         TrackPointer track = trackModel->getTrack(index);
         if (!track->isBpmLocked()) { // bpm is not locked
@@ -1844,12 +1978,28 @@ void WTrackTableView::lockBpm(bool lock) {
         return;
     }
 
-    QModelIndexList selectedTrackIndices = selectionModel()->selectedRows();
+    const QModelIndexList selectedTrackIndices = selectionModel()->selectedRows();
     // TODO: This should be done in a thread for large selections
     for (const auto& index : selectedTrackIndices) {
         TrackPointer track = trackModel->getTrack(index);
         track->setBpmLocked(lock);
     }
+}
+
+void WTrackTableView::slotColorPicked(PredefinedColorPointer pColor) {
+    TrackModel* trackModel = getTrackModel();
+    if (trackModel == nullptr) {
+        return;
+    }
+
+    const QModelIndexList selectedTrackIndices = selectionModel()->selectedRows();
+    // TODO: This should be done in a thread for large selections
+    for (const auto& index : selectedTrackIndices) {
+        TrackPointer track = trackModel->getTrack(index);
+        track->setColor(mixxx::RgbColor::optional(pColor->m_defaultRgba));
+    }
+
+    m_pMenu->hide();
 }
 
 void WTrackTableView::slotClearBeats() {
@@ -1858,7 +2008,7 @@ void WTrackTableView::slotClearBeats() {
         return;
     }
 
-    QModelIndexList selectedTrackIndices = selectionModel()->selectedRows();
+    const QModelIndexList selectedTrackIndices = selectionModel()->selectedRows();
     // TODO: This should be done in a thread for large selections
     for (const auto& index : selectedTrackIndices) {
         TrackPointer track = trackModel->getTrack(index);
@@ -1869,7 +2019,7 @@ void WTrackTableView::slotClearBeats() {
 }
 
 void WTrackTableView::slotClearMainCue() {
-    QModelIndexList indices = selectionModel()->selectedRows();
+    const QModelIndexList indices = selectionModel()->selectedRows();
     TrackModel* trackModel = getTrackModel();
 
     if (trackModel == nullptr) {
@@ -1879,13 +2029,13 @@ void WTrackTableView::slotClearMainCue() {
     for (const QModelIndex& index : indices) {
         TrackPointer pTrack = trackModel->getTrack(index);
         if (pTrack) {
-            pTrack->removeCuesOfType(Cue::LOAD);
+            pTrack->removeCuesOfType(Cue::Type::MainCue);
         }
     }
 }
 
 void WTrackTableView::slotClearHotCues() {
-    QModelIndexList indices = selectionModel()->selectedRows();
+    const QModelIndexList indices = selectionModel()->selectedRows();
     TrackModel* trackModel = getTrackModel();
 
     if (trackModel == nullptr) {
@@ -1895,13 +2045,45 @@ void WTrackTableView::slotClearHotCues() {
     for (const QModelIndex& index : indices) {
         TrackPointer pTrack = trackModel->getTrack(index);
         if (pTrack) {
-            pTrack->removeCuesOfType(Cue::CUE);
+            pTrack->removeCuesOfType(Cue::Type::HotCue);
+        }
+    }
+}
+
+void WTrackTableView::slotClearIntroCue() {
+    const QModelIndexList indices = selectionModel()->selectedRows();
+    TrackModel* trackModel = getTrackModel();
+
+    if (trackModel == nullptr) {
+        return;
+    }
+
+    for (const QModelIndex& index : indices) {
+        TrackPointer pTrack = trackModel->getTrack(index);
+        if (pTrack) {
+            pTrack->removeCuesOfType(Cue::Type::Intro);
+        }
+    }
+}
+
+void WTrackTableView::slotClearOutroCue() {
+    const QModelIndexList indices = selectionModel()->selectedRows();
+    TrackModel* trackModel = getTrackModel();
+
+    if (trackModel == nullptr) {
+        return;
+    }
+
+    for (const QModelIndex& index : indices) {
+        TrackPointer pTrack = trackModel->getTrack(index);
+        if (pTrack) {
+            pTrack->removeCuesOfType(Cue::Type::Outro);
         }
     }
 }
 
 void WTrackTableView::slotClearLoop() {
-    QModelIndexList indices = selectionModel()->selectedRows();
+    const QModelIndexList indices = selectionModel()->selectedRows();
     TrackModel* trackModel = getTrackModel();
 
     if (trackModel == nullptr) {
@@ -1911,13 +2093,13 @@ void WTrackTableView::slotClearLoop() {
     for (const QModelIndex& index : indices) {
         TrackPointer pTrack = trackModel->getTrack(index);
         if (pTrack) {
-            pTrack->removeCuesOfType(Cue::LOOP);
+            pTrack->removeCuesOfType(Cue::Type::Loop);
         }
     }
 }
 
 void WTrackTableView::slotClearKey() {
-    QModelIndexList indices = selectionModel()->selectedRows();
+    const QModelIndexList indices = selectionModel()->selectedRows();
     TrackModel* trackModel = getTrackModel();
 
     if (trackModel == nullptr) {
@@ -1933,7 +2115,7 @@ void WTrackTableView::slotClearKey() {
 }
 
 void WTrackTableView::slotClearReplayGain() {
-    QModelIndexList indices = selectionModel()->selectedRows();
+    const QModelIndexList indices = selectionModel()->selectedRows();
     TrackModel* trackModel = getTrackModel();
 
     if (trackModel == nullptr) {
@@ -1954,8 +2136,8 @@ void WTrackTableView::slotClearWaveform() {
         return;
     }
 
-    AnalysisDao& analysisDao = m_pTrackCollection->getAnalysisDAO();
-    QModelIndexList indices = selectionModel()->selectedRows();
+    AnalysisDao& analysisDao = m_pTrackCollectionManager->internalCollection()->getAnalysisDAO();
+    const QModelIndexList indices = selectionModel()->selectedRows();
     for (const QModelIndex& index : indices) {
         TrackPointer pTrack = trackModel->getTrack(index);
         if (!pTrack) {
@@ -1971,6 +2153,8 @@ void WTrackTableView::slotClearAllMetadata() {
     slotClearBeats();
     slotClearMainCue();
     slotClearHotCues();
+    slotClearIntroCue();
+    slotClearOutroCue();
     slotClearLoop();
     slotClearKey();
     slotClearReplayGain();
@@ -1982,7 +2166,7 @@ void WTrackTableView::slotCoverInfoSelected(const CoverInfoRelative& coverInfo) 
     if (trackModel == nullptr) {
         return;
     }
-    QModelIndexList selection = selectionModel()->selectedRows();
+    const QModelIndexList selection = selectionModel()->selectedRows();
     for (const QModelIndex& index : selection) {
         TrackPointer pTrack = trackModel->getTrack(index);
         if (pTrack) {
@@ -1997,7 +2181,7 @@ void WTrackTableView::slotReloadCoverArt() {
         return;
     }
     QList<TrackPointer> selectedTracks;
-    QModelIndexList selection = selectionModel()->selectedRows();
+    const QModelIndexList selection = selectionModel()->selectedRows();
     for (const QModelIndex& index : selection) {
         TrackPointer pTrack = trackModel->getTrack(index);
         if (pTrack) {
