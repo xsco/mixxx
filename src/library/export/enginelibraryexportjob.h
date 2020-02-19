@@ -11,7 +11,6 @@
 
 #include <djinterop/database.hpp>
 
-#include "library/analysisfeature.h"
 #include "library/export/enginelibraryexportrequest.h"
 #include "library/trackcollectionmanager.h"
 #include "library/trackloader.h"
@@ -25,7 +24,7 @@ class EngineLibraryExportJob : public QThread {
     Q_OBJECT
   public:
     EngineLibraryExportJob(
-            QObject* parent, TrackCollectionManager& trackCollectionManager, TrackLoader& trackLoader, AnalysisFeature& analysisFeature, EngineLibraryExportRequest request);
+            QObject* parent, TrackCollectionManager& trackCollectionManager, TrackLoader& trackLoader, EngineLibraryExportRequest request);
 
     void run() override;
 
@@ -45,7 +44,6 @@ class EngineLibraryExportJob : public QThread {
 
     TrackCollectionManager& m_trackCollectionManager;
     TrackLoader& m_trackLoader;
-    AnalysisFeature& m_analysisFeature;
     EngineLibraryExportRequest m_request;
     QHash<TrackId, int64_t> m_mixxxToEngineLibraryTrackIdMap;
     std::unique_ptr<djinterop::database> m_pDb;

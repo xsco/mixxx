@@ -9,13 +9,11 @@ namespace mixxx {
 
 LibraryExporter::LibraryExporter(QWidget* parent,
         UserSettingsPointer pConfig,
-        TrackCollectionManager& trackCollectionManager,
-        AnalysisFeature& analysisFeature)
+        TrackCollectionManager& trackCollectionManager)
         : QWidget{parent},
           m_pConfig{std::move(pConfig)},
           m_trackCollectionManager{trackCollectionManager},
-          m_pTrackLoader{nullptr},
-          m_analysisFeature{analysisFeature} {
+          m_pTrackLoader{nullptr} {
     m_pTrackLoader = new TrackLoader(&m_trackCollectionManager, this);
 }
 
@@ -39,7 +37,7 @@ void LibraryExporter::beginEngineLibraryExport(
         EngineLibraryExportRequest request) {
     // Run the job in a background thread.
     auto* pJobThread = new EngineLibraryExportJob{
-            this, m_trackCollectionManager, *m_pTrackLoader, m_analysisFeature, std::move(request)};
+            this, m_trackCollectionManager, *m_pTrackLoader, std::move(request)};
     connect(pJobThread, &EngineLibraryExportJob::finished, pJobThread, &QObject::deleteLater);
     pJobThread->start();
 

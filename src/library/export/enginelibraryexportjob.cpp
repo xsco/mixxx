@@ -100,7 +100,6 @@ djinterop::track getTrackByRelativePath(
 void exportMetadata(djinterop::database& db,
         QHash<TrackId, int64_t>& mixxxToEngineLibraryTrackIdMap,
         TrackPointer pTrack,
-        std::unique_ptr<Waveform> pWaveformSummary,
         std::unique_ptr<Waveform> pWaveform,
         const std::string& relativePath) {
     // Create or load the track in the EL database, using the relative path to
@@ -135,19 +134,38 @@ void exportMetadata(djinterop::database& db,
     auto sampleCount = static_cast<int64_t>(pTrack->getDuration() * pTrack->getSampleRate());
     externalTrack.set_sampling({static_cast<double>(pTrack->getSampleRate()), sampleCount});
 
-    // TODO(mr-smidge) - Set average loudness.
+    // TODO(mr-smidge) - Set average loudness.  Where does Mixxx store this?
     externalTrack.set_average_loudness(0.5f);
+
+    // Set main cue-point.
+    double cuePlayPos = pTrack->getCuePoint().getPosition();
+    externalTrack.set_default_main_cue(cuePlayPos / 2);
+    externalTrack.set_adjusted_main_cue(cuePlayPos / 2);
 
     // Fill in beat grid.  For now, assume a constant average BPM across
     // the whole track.  Note that points in the track are specified as
     // "play positions", which are twice the sample offset.
     BeatsPointer beats = pTrack->getBeats();
     if (beats != nullptr) {
+        // Note that Mixxx does not (currently) store any information about
+        // which beat of a bar a given beat represents.  As such, in order to
+        // make sure we have the right phrasing, assume that the main cue point
+        // starts at the beginning of a bar, then move backwards towards the
+        // beginning of the track in 4-beat decrements to find the first beat
+        // in the track that also aligns with the start of a bar.
         double firstBeatPlayPos = beats->findNextBeat(0);
+        double cueBeatPlayPos = beats->findClosestBeat(cuePlayPos);
+        int numBeatsToCue = beats->numBeatsInRange(firstBeatPlayPos, cueBeatPlayPos);
+        double firstBarAlignedBeatPlayPos = beats->findNBeatsFromSample(
+                cueBeatPlayPos, numBeatsToCue & ~0x3);
+
+        // We will treat the first bar-aligned beat as beat zero.  Find the
+        // number of beats from there until the end of the track in order to
+        // correctly assign an index for the last beat.
         double lastBeatPlayPos = beats->findPrevBeat(sampleCount * 2);
-        int numBeats = beats->numBeatsInRange(firstBeatPlayPos, lastBeatPlayPos);
+        int numBeats = beats->numBeatsInRange(firstBarAlignedBeatPlayPos, lastBeatPlayPos);
         std::vector<djinterop::beatgrid_marker> beatgrid{
-                {0, firstBeatPlayPos / 2}, {numBeats, lastBeatPlayPos / 2}};
+                {0, firstBarAlignedBeatPlayPos / 2}, {numBeats, lastBeatPlayPos / 2}};
         beatgrid = el::normalize_beatgrid(std::move(beatgrid), sampleCount);
         externalTrack.set_default_beatgrid(beatgrid);
         externalTrack.set_adjusted_beatgrid(beatgrid);
@@ -184,11 +202,6 @@ void exportMetadata(djinterop::database& db,
         externalTrack.set_hot_cue_at(hot_cue_index, hc);
     }
 
-    // Set main cue-point.
-    double cuePlayPos = pTrack->getCuePoint().getPosition();
-    externalTrack.set_default_main_cue(cuePlayPos / 2);
-    externalTrack.set_adjusted_main_cue(cuePlayPos / 2);
-
     // Note that Mixxx does not support pre-calculated stored loops, but it will
     // remember the position of a single ad-hoc loop between track loads.
     // However, since this single ad-hoc loop is likely to be different in use
@@ -196,15 +209,9 @@ void exportMetadata(djinterop::database& db,
     // it to the Engine Library database here.
     externalTrack.set_loops({});
 
-    // Write overview waveform.
-    if (pWaveformSummary) {
-        // TODO (mr-smidge) write summary waveform.
-    } else {
-        qInfo() << "No waveform summary data found for track" << pTrack->getId()
-                << "(" << pTrack->getFileInfo().fileName() << ")";
-    }
-
-    // Write high-resolution full waveform.
+    // Write waveform.
+    // Note that writing a single waveform will automatically calculate an
+    // overview waveform too.
     if (pWaveform) {
         int64_t externalWaveformSize = externalTrack.recommended_waveform_size();
         std::vector<djinterop::waveform_entry> externalWaveform;
@@ -229,17 +236,9 @@ void exportTrack(TrackCollection& trackCollection,
         djinterop::database& db,
         QHash<TrackId, int64_t>& mixxxToEngineLibraryTrackIdMap,
         const TrackPointer pTrack) {
-    // Load waveforms from analysis info.
+    // Load high-resolution waveform from analysis info.
     auto& analysisDao = trackCollection.getAnalysisDAO();
-    std::unique_ptr<Waveform> pWaveformSummary;
     std::unique_ptr<Waveform> pWaveform;
-    auto waveformSummaryAnalyses = analysisDao.getAnalysesForTrackByType(
-            pTrack->getId(), AnalysisDao::TYPE_WAVESUMMARY);
-    if (!waveformSummaryAnalyses.isEmpty()) {
-        auto& summaryAnalysis = waveformSummaryAnalyses.first();
-        pWaveformSummary.reset(
-                WaveformFactory::loadWaveformFromAnalysis(summaryAnalysis));
-    }
     auto waveformAnalyses = analysisDao.getAnalysesForTrackByType(
             pTrack->getId(), AnalysisDao::TYPE_WAVEFORM);
     if (!waveformAnalyses.isEmpty()) {
@@ -252,7 +251,7 @@ void exportTrack(TrackCollection& trackCollection,
     auto musicFileRelativePath = exportFile(request, pTrack);
 
     // Export meta-data.
-    exportMetadata(db, mixxxToEngineLibraryTrackIdMap, pTrack, std::move(pWaveformSummary), std::move(pWaveform), musicFileRelativePath);
+    exportMetadata(db, mixxxToEngineLibraryTrackIdMap, pTrack, std::move(pWaveform), musicFileRelativePath);
 }
 
 void exportCrate(TrackCollection& trackCollection,
@@ -280,9 +279,8 @@ void exportCrate(TrackCollection& trackCollection,
 EngineLibraryExportJob::EngineLibraryExportJob(QObject* parent,
         TrackCollectionManager& trackCollectionManager,
         TrackLoader& trackLoader,
-        AnalysisFeature& analysisFeature,
         EngineLibraryExportRequest request)
-        : QThread(parent), m_trackCollectionManager(trackCollectionManager), m_trackLoader(trackLoader), m_analysisFeature(analysisFeature), m_request{std::move(request)} {
+        : QThread(parent), m_trackCollectionManager(trackCollectionManager), m_trackLoader(trackLoader), m_request{std::move(request)} {
     connect(&m_trackLoader, &TrackLoader::trackLoaded, this, &EngineLibraryExportJob::trackLoaded);
 }
 

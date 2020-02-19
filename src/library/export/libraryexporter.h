@@ -9,7 +9,6 @@
 #include "preferences/usersettings.h"
 #include "util/parented_ptr.h"
 
-class AnalysisFeature;
 class TrackCollectionManager;
 
 namespace mixxx {
@@ -24,8 +23,7 @@ class LibraryExporter : public QWidget {
   public:
     LibraryExporter(QWidget* parent,
             UserSettingsPointer pConfig,
-            TrackCollectionManager& trackCollectionManager,
-            AnalysisFeature& analysisFeature);
+            TrackCollectionManager& trackCollectionManager);
 
   public slots:
     // Begin the process of a library export.
@@ -38,7 +36,6 @@ class LibraryExporter : public QWidget {
     UserSettingsPointer m_pConfig;
     TrackCollectionManager& m_trackCollectionManager;
     TrackLoader* m_pTrackLoader;
-    AnalysisFeature& m_analysisFeature;
     parented_ptr<DlgLibraryExport> m_pDialog;
 };
 

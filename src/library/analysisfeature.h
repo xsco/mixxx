@@ -45,7 +45,6 @@ class AnalysisFeature : public LibraryFeature {
 
   signals:
     void analysisActive(bool bActive);
-    void trackAnalysisDone(TrackId trackId);
 
   public slots:
     void activate() override;
