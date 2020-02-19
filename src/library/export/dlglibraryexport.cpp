@@ -23,10 +23,8 @@ namespace el = djinterop::enginelibrary;
 namespace mixxx {
 
 DlgLibraryExport::DlgLibraryExport(
-        QWidget* parent, UserSettingsPointer pConfig,
-        TrackCollectionManager& trackCollectionManager)
-        : QDialog(parent), m_pConfig{pConfig},
-        m_trackCollectionManager{trackCollectionManager} {
+        QWidget* parent, UserSettingsPointer pConfig, TrackCollectionManager& trackCollectionManager)
+        : QDialog(parent), m_pConfig{pConfig}, m_trackCollectionManager{trackCollectionManager} {
     // Selectable list of crates from the Mixxx library.
     m_pCratesList = make_parented<QListWidget>();
     m_pCratesList->setSelectionMode(QListWidget::ExtendedSelection);
@@ -147,7 +145,7 @@ void DlgLibraryExport::exportRequested() {
         QMessageBox::information(this,
                 tr("No Export Directory Chosen"),
                 tr("No export directory was chosen. Please choose a directory "
-                    "in order to export the music library."),
+                   "in order to export the music library."),
                 QMessageBox::Ok,
                 QMessageBox::Ok);
         return;
@@ -160,14 +158,13 @@ void DlgLibraryExport::exportRequested() {
                 this,
                 tr("Merge Into Existing Library?"),
                 tr("There is already an existing library in directory ") +
-                m_pDatabaseDirectoryTextField->text() +
-                tr("\nIf you proceed, the Mixxx library will be merged into "
-                   "this existing library.  Do you want to merge into the "
-                   "the existing library?"),
+                        m_pDatabaseDirectoryTextField->text() +
+                        tr("\nIf you proceed, the Mixxx library will be merged into "
+                           "this existing library.  Do you want to merge into the "
+                           "the existing library?"),
                 QMessageBox::Yes | QMessageBox::Cancel,
                 QMessageBox::Cancel);
-        if (ret != QMessageBox::Yes)
-        {
+        if (ret != QMessageBox::Yes) {
             return;
         }
     }

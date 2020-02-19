@@ -12,9 +12,9 @@
 #include <djinterop/database.hpp>
 
 #include "library/analysisfeature.h"
+#include "library/export/enginelibraryexportrequest.h"
 #include "library/trackcollectionmanager.h"
 #include "library/trackloader.h"
-#include "library/export/enginelibraryexportrequest.h"
 
 namespace mixxx {
 
@@ -25,9 +25,7 @@ class EngineLibraryExportJob : public QThread {
     Q_OBJECT
   public:
     EngineLibraryExportJob(
-            QObject* parent, TrackCollectionManager& trackCollectionManager,
-            TrackLoader &trackLoader, AnalysisFeature& analysisFeature,
-            EngineLibraryExportRequest request);
+            QObject* parent, TrackCollectionManager& trackCollectionManager, TrackLoader& trackLoader, AnalysisFeature& analysisFeature, EngineLibraryExportRequest request);
 
     void run() override;
 

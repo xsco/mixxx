@@ -2,15 +2,15 @@
 
 #include <QThreadPool>
 
-#include "library/trackloader.h"
 #include "library/export/enginelibraryexportjob.h"
+#include "library/trackloader.h"
 
 namespace mixxx {
 
-LibraryExporter::LibraryExporter(QWidget *parent,
+LibraryExporter::LibraryExporter(QWidget* parent,
         UserSettingsPointer pConfig,
-        TrackCollectionManager &trackCollectionManager,
-        AnalysisFeature &analysisFeature)
+        TrackCollectionManager& trackCollectionManager,
+        AnalysisFeature& analysisFeature)
         : QWidget{parent},
           m_pConfig{std::move(pConfig)},
           m_trackCollectionManager{trackCollectionManager},
@@ -38,11 +38,9 @@ void LibraryExporter::requestExport() {
 void LibraryExporter::beginEngineLibraryExport(
         EngineLibraryExportRequest request) {
     // Run the job in a background thread.
-    auto *pJobThread = new EngineLibraryExportJob{
-        this, m_trackCollectionManager, *m_pTrackLoader, m_analysisFeature,
-            std::move(request)};
-    connect(pJobThread, &EngineLibraryExportJob::finished,
-            pJobThread, &QObject::deleteLater);
+    auto* pJobThread = new EngineLibraryExportJob{
+            this, m_trackCollectionManager, *m_pTrackLoader, m_analysisFeature, std::move(request)};
+    connect(pJobThread, &EngineLibraryExportJob::finished, pJobThread, &QObject::deleteLater);
     pJobThread->start();
 
     // TODO (mr-smidge) - construct a modal dialog to monitor job progress.

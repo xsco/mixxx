@@ -21,31 +21,31 @@ const std::string MixxxRootCrateName = "Mixxx";
 stdx::optional<djinterop::musical_key> toDjinteropKey(
         mixxx::track::io::key::ChromaticKey key) {
     static const std::array<stdx::optional<djinterop::musical_key>, 25> keyMap{{
-        stdx::nullopt,                        // INVALID = 0,
-        djinterop::musical_key::c_major,       // C_MAJOR = 1,
-        djinterop::musical_key::d_flat_major,  // D_FLAT_MAJOR = 2,
-        djinterop::musical_key::d_major,       // D_MAJOR = 3,
-        djinterop::musical_key::e_flat_major,  // E_FLAT_MAJOR = 4,
-        djinterop::musical_key::e_major,       // E_MAJOR = 5,
-        djinterop::musical_key::f_major,       // F_MAJOR = 6,
-        djinterop::musical_key::f_sharp_major, // F_SHARP_MAJOR = 7,
-        djinterop::musical_key::g_major,       // G_MAJOR = 8,
-        djinterop::musical_key::a_flat_major,  // A_FLAT_MAJOR = 9,
-        djinterop::musical_key::a_major,       // A_MAJOR = 10,
-        djinterop::musical_key::b_flat_major,  // B_FLAT_MAJOR = 11,
-        djinterop::musical_key::b_major,       // B_MAJOR = 12,
-        djinterop::musical_key::c_minor,       // C_MINOR = 13,
-        djinterop::musical_key::d_flat_minor,  // C_SHARP_MINOR = 14,
-        djinterop::musical_key::d_minor,       // D_MINOR = 15,
-        djinterop::musical_key::e_flat_minor,  // E_FLAT_MINOR = 16,
-        djinterop::musical_key::e_minor,       // E_MINOR = 17,
-        djinterop::musical_key::f_minor,       // F_MINOR = 18,
-        djinterop::musical_key::f_sharp_minor, // F_SHARP_MINOR = 19,
-        djinterop::musical_key::g_minor,       // G_MINOR = 20,
-        djinterop::musical_key::a_flat_minor,  // G_SHARP_MINOR = 21,
-        djinterop::musical_key::a_minor,       // A_MINOR = 22,
-        djinterop::musical_key::b_flat_minor,  // B_FLAT_MINOR = 23,
-        djinterop::musical_key::b_minor,       // B_MINOR = 24
+            stdx::nullopt,                         // INVALID = 0,
+            djinterop::musical_key::c_major,       // C_MAJOR = 1,
+            djinterop::musical_key::d_flat_major,  // D_FLAT_MAJOR = 2,
+            djinterop::musical_key::d_major,       // D_MAJOR = 3,
+            djinterop::musical_key::e_flat_major,  // E_FLAT_MAJOR = 4,
+            djinterop::musical_key::e_major,       // E_MAJOR = 5,
+            djinterop::musical_key::f_major,       // F_MAJOR = 6,
+            djinterop::musical_key::f_sharp_major, // F_SHARP_MAJOR = 7,
+            djinterop::musical_key::g_major,       // G_MAJOR = 8,
+            djinterop::musical_key::a_flat_major,  // A_FLAT_MAJOR = 9,
+            djinterop::musical_key::a_major,       // A_MAJOR = 10,
+            djinterop::musical_key::b_flat_major,  // B_FLAT_MAJOR = 11,
+            djinterop::musical_key::b_major,       // B_MAJOR = 12,
+            djinterop::musical_key::c_minor,       // C_MINOR = 13,
+            djinterop::musical_key::d_flat_minor,  // C_SHARP_MINOR = 14,
+            djinterop::musical_key::d_minor,       // D_MINOR = 15,
+            djinterop::musical_key::e_flat_minor,  // E_FLAT_MINOR = 16,
+            djinterop::musical_key::e_minor,       // E_MINOR = 17,
+            djinterop::musical_key::f_minor,       // F_MINOR = 18,
+            djinterop::musical_key::f_sharp_minor, // F_SHARP_MINOR = 19,
+            djinterop::musical_key::g_minor,       // G_MINOR = 20,
+            djinterop::musical_key::a_flat_minor,  // G_SHARP_MINOR = 21,
+            djinterop::musical_key::a_minor,       // A_MINOR = 22,
+            djinterop::musical_key::b_flat_minor,  // B_FLAT_MINOR = 23,
+            djinterop::musical_key::b_minor,       // B_MINOR = 24
     }};
 
     return keyMap[key];
@@ -56,13 +56,12 @@ std::string exportFile(const EngineLibraryExportRequest& request,
     if (!request.engineLibraryDbDir.exists()) {
         auto msg = QString(
                 "Engine Library DB directory %1 has been removed from disk!")
-            .arg(request.engineLibraryDbDir.absolutePath());
+                           .arg(request.engineLibraryDbDir.absolutePath());
         throw std::runtime_error{msg.toStdString()};
-    }
-    else if (!request.musicFilesDir.exists()) {
+    } else if (!request.musicFilesDir.exists()) {
         auto msg = QString(
                 "Music file export directory %1 has been removed from disk!")
-            .arg(request.musicFilesDir.absolutePath());
+                           .arg(request.musicFilesDir.absolutePath());
         throw std::runtime_error{msg.toStdString()};
     }
 
@@ -73,9 +72,10 @@ std::string exportFile(const EngineLibraryExportRequest& request,
     TrackFile srcFileInfo = pTrack->getFileInfo();
     auto trackId = pTrack->getId().value();
     auto dstFilename = std::to_string(trackId) + "." +
-        srcFileInfo.asFileInfo().suffix().toStdString();
+            srcFileInfo.asFileInfo().suffix().toStdString();
     auto dstPath = request.musicFilesDir.filePath(QString::fromStdString(dstFilename));
-    if (!QFile::exists(dstPath) || srcFileInfo.fileLastModified() > QFileInfo{dstPath}.lastModified()) {
+    if (!QFile::exists(dstPath) ||
+            srcFileInfo.fileLastModified() > QFileInfo{dstPath}.lastModified()) {
         auto srcPath = srcFileInfo.location();
         QFile::copy(srcPath, dstPath);
     }
@@ -97,10 +97,12 @@ djinterop::track getTrackByRelativePath(
     }
 }
 
-void exportMetadata(djinterop::database &db,
+void exportMetadata(djinterop::database& db,
         QHash<TrackId, int64_t>& mixxxToEngineLibraryTrackIdMap,
-        TrackPointer pTrack, std::unique_ptr<Waveform> pWaveformSummary,
-        std::unique_ptr<Waveform> pWaveform, const std::string& relativePath) {
+        TrackPointer pTrack,
+        std::unique_ptr<Waveform> pWaveformSummary,
+        std::unique_ptr<Waveform> pWaveform,
+        const std::string& relativePath) {
     // Create or load the track in the EL database, using the relative path to
     // the music file.  We will record the mapping from Mixxx track id to EL
     // track id as well.
@@ -123,7 +125,7 @@ void exportMetadata(djinterop::database &db,
     externalTrack.set_composer(pTrack->getComposer().toStdString());
     externalTrack.set_key(toDjinteropKey(pTrack->getKey()));
     int64_t lastModifiedMillisSinceEpoch =
-        pTrack->getFileInfo().fileLastModified().toMSecsSinceEpoch();
+            pTrack->getFileInfo().fileLastModified().toMSecsSinceEpoch();
     std::chrono::system_clock::time_point lastModifiedAt{
             std::chrono::milliseconds{lastModifiedMillisSinceEpoch}};
     externalTrack.set_last_modified_at(lastModifiedAt);
@@ -149,14 +151,13 @@ void exportMetadata(djinterop::database &db,
         beatgrid = el::normalize_beatgrid(std::move(beatgrid), sampleCount);
         externalTrack.set_default_beatgrid(beatgrid);
         externalTrack.set_adjusted_beatgrid(beatgrid);
-    }
-    else {
+    } else {
         qInfo() << "No beats data found for track" << pTrack->getId()
-            << "(" << pTrack->getFileInfo().fileName() << ")";
+                << "(" << pTrack->getFileInfo().fileName() << ")";
     }
 
     auto cues = pTrack->getCuePoints();
-    for (const CuePointer &pCue : cues) {
+    for (const CuePointer& pCue : cues) {
         // We are only interested in hot cues.
         if (pCue.get() == nullptr || pCue->getType() != Cue::Type::HotCue) {
             continue;
@@ -166,8 +167,8 @@ void exportMetadata(djinterop::database &db,
         if (hot_cue_index < 0 || hot_cue_index >= 8) {
             // EL only supports a maximum of 8 hot cues.
             qInfo() << "Skipping hot cue" << hot_cue_index
-                << "as the Engine Library format only supports at most 8"
-                << "hot cues.";
+                    << "as the Engine Library format only supports at most 8"
+                    << "hot cues.";
             continue;
         }
 
@@ -182,7 +183,7 @@ void exportMetadata(djinterop::database &db,
         hc.color = el::standard_pad_colors::pads[hot_cue_index];
         externalTrack.set_hot_cue_at(hot_cue_index, hc);
     }
-    
+
     // Set main cue-point.
     double cuePlayPos = pTrack->getCuePoint().getPosition();
     externalTrack.set_default_main_cue(cuePlayPos / 2);
@@ -198,10 +199,9 @@ void exportMetadata(djinterop::database &db,
     // Write overview waveform.
     if (pWaveformSummary) {
         // TODO (mr-smidge) write summary waveform.
-    }
-    else {
+    } else {
         qInfo() << "No waveform summary data found for track" << pTrack->getId()
-            << "(" << pTrack->getFileInfo().fileName() << ")";
+                << "(" << pTrack->getFileInfo().fileName() << ")";
     }
 
     // Write high-resolution full waveform.
@@ -216,17 +216,17 @@ void exportMetadata(djinterop::database &db,
                     {pWaveform->getHigh(j), 127}});
         }
         externalTrack.set_waveform(std::move(externalWaveform));
-    }
-    else {
+    } else {
         qInfo() << "No waveform data found for track" << pTrack->getId()
-            << "(" << pTrack->getFileInfo().fileName() << ")";
+                << "(" << pTrack->getFileInfo().fileName() << ")";
     }
 
     qInfo() << "Wrote all meta-data for track";
 }
 
-void exportTrack(TrackCollection &trackCollection,
-        const EngineLibraryExportRequest& request, djinterop::database &db,
+void exportTrack(TrackCollection& trackCollection,
+        const EngineLibraryExportRequest& request,
+        djinterop::database& db,
         QHash<TrackId, int64_t>& mixxxToEngineLibraryTrackIdMap,
         const TrackPointer pTrack) {
     // Load waveforms from analysis info.
@@ -243,7 +243,7 @@ void exportTrack(TrackCollection &trackCollection,
     auto waveformAnalyses = analysisDao.getAnalysesForTrackByType(
             pTrack->getId(), AnalysisDao::TYPE_WAVEFORM);
     if (!waveformAnalyses.isEmpty()) {
-        auto& waveformAnalysis=  waveformAnalyses.first();
+        auto& waveformAnalysis = waveformAnalyses.first();
         pWaveform.reset(
                 WaveformFactory::loadWaveformFromAnalysis(waveformAnalysis));
     }
@@ -252,20 +252,18 @@ void exportTrack(TrackCollection &trackCollection,
     auto musicFileRelativePath = exportFile(request, pTrack);
 
     // Export meta-data.
-    exportMetadata(db, mixxxToEngineLibraryTrackIdMap, pTrack,
-        std::move(pWaveformSummary), std::move(pWaveform),
-        musicFileRelativePath);
+    exportMetadata(db, mixxxToEngineLibraryTrackIdMap, pTrack, std::move(pWaveformSummary), std::move(pWaveform), musicFileRelativePath);
 }
 
-void exportCrate(TrackCollection &trackCollection,
-        djinterop::crate &extRootCrate,
+void exportCrate(TrackCollection& trackCollection,
+        djinterop::crate& extRootCrate,
         QHash<TrackId, int64_t>& mixxxToEngineLibraryTrackIdMap,
-        const CrateId &crateId) {
+        const CrateId& crateId) {
     // Load the crate (synchronously, as TrackCollection should not be accessed
     // in an unchecked parallel manner).
     Crate crate;
     trackCollection.crates().readCrateById(crateId, &crate);
-    
+
     // Create a new crate as a sub-crate of the top-level Mixxx crate.
     auto extCrate = extRootCrate.create_sub_crate(crate.getName().toStdString());
 
@@ -279,16 +277,13 @@ void exportCrate(TrackCollection &trackCollection,
 
 } // namespace
 
-
 EngineLibraryExportJob::EngineLibraryExportJob(QObject* parent,
         TrackCollectionManager& trackCollectionManager,
-        TrackLoader& trackLoader, AnalysisFeature& analysisFeature,
+        TrackLoader& trackLoader,
+        AnalysisFeature& analysisFeature,
         EngineLibraryExportRequest request)
-        : QThread(parent), m_trackCollectionManager(trackCollectionManager),
-        m_trackLoader(trackLoader), m_analysisFeature(analysisFeature),
-        m_request{std::move(request)} {
-    connect(&m_trackLoader, &TrackLoader::trackLoaded,
-            this, &EngineLibraryExportJob::trackLoaded);
+        : QThread(parent), m_trackCollectionManager(trackCollectionManager), m_trackLoader(trackLoader), m_analysisFeature(analysisFeature), m_request{std::move(request)} {
+    connect(&m_trackLoader, &TrackLoader::trackLoaded, this, &EngineLibraryExportJob::trackLoaded);
 }
 
 void EngineLibraryExportJob::trackLoaded(TrackRef trackRef, TrackPointer trackPtr) {
@@ -300,9 +295,8 @@ void EngineLibraryExportJob::trackLoaded(TrackRef trackRef, TrackPointer trackPt
     }
 
     qInfo() << "Exporting track" << trackRef.getId().value() << "at"
-        << trackRef.getLocation() << "...";
-    exportTrack(*m_trackCollectionManager.internalCollection(), m_request,
-            *m_pDb, m_mixxxToEngineLibraryTrackIdMap, trackPtr);
+            << trackRef.getLocation() << "...";
+    exportTrack(*m_trackCollectionManager.internalCollection(), m_request, *m_pDb, m_mixxxToEngineLibraryTrackIdMap, trackPtr);
 
     // Removing this track from the queue and notify it has been exported.
     QMutexLocker lock{&m_trackMutex};
@@ -314,25 +308,30 @@ void EngineLibraryExportJob::trackLoaded(TrackRef trackRef, TrackPointer trackPt
 QSet<TrackRef> EngineLibraryExportJob::getAllTrackRefs() const {
     QSet<TrackRef> trackRefs;
     auto dirs = m_trackCollectionManager.internalCollection()
-        ->getDirectoryDAO().getDirs();
+                        ->getDirectoryDAO()
+                        .getDirs();
     for (auto iter = dirs.cbegin(); iter != dirs.cend(); ++iter) {
         trackRefs.unite(m_trackCollectionManager.internalCollection()
-                ->getTrackDAO().getAllTrackRefs(*iter).toSet());
+                                ->getTrackDAO()
+                                .getAllTrackRefs(*iter)
+                                .toSet());
     }
     return trackRefs;
 }
 
 // Obtain a set of track refs in a set of crates.
 QSet<TrackRef> EngineLibraryExportJob::getTracksRefsInCrates(
-        const QSet<CrateId> &crateIds) const {
+        const QSet<CrateId>& crateIds) const {
     QSet<TrackRef> trackRefs;
     for (auto iter = crateIds.cbegin(); iter != crateIds.cend(); ++iter) {
         auto result = m_trackCollectionManager.internalCollection()
-            ->crates().selectCrateTracksSorted(*iter);
+                              ->crates()
+                              .selectCrateTracksSorted(*iter);
         while (result.next()) {
             auto trackId = result.trackId();
             auto location = m_trackCollectionManager.internalCollection()
-                ->getTrackDAO().getTrackLocation(trackId);
+                                    ->getTrackDAO()
+                                    .getTrackLocation(trackId);
             auto trackFile = TrackFile(location);
             trackRefs.insert(TrackRef::fromFileInfo(trackFile, trackId));
         }
@@ -351,8 +350,7 @@ void EngineLibraryExportJob::run() {
     if (m_request.exportSelectedCrates) {
         trackRefs = getTracksRefsInCrates(m_request.crateIdsToExport);
         crateIds = m_request.crateIdsToExport;
-    }
-    else {
+    } else {
         // Note that we do not currently export empty crates.
         trackRefs = getAllTrackRefs();
 
@@ -362,7 +360,8 @@ void EngineLibraryExportJob::run() {
             trackIds.append(iter->getId());
         }
         crateIds = m_trackCollectionManager.internalCollection()
-            ->crates().collectCrateIdsOfTracks(trackIds);
+                           ->crates()
+                           .collectCrateIdsOfTracks(trackIds);
     }
 
     // Measure progress as one 'count' for each track, each crate, plus an
@@ -376,12 +375,13 @@ void EngineLibraryExportJob::run() {
     {
         auto db = el::create_or_load_database(
                 m_request.engineLibraryDbDir.path().toStdString(),
-                el::version_latest, created);
+                el::version_latest,
+                created);
         m_pDb.reset(new djinterop::database{db});
     }
     ++currProgress;
     emit(jobProgress(currProgress / maxProgress));
-  
+
     // We will build up a map from Mixxx track id to EL track id during export.
     m_mixxxToEngineLibraryTrackIdMap.clear();
 
@@ -411,13 +411,13 @@ void EngineLibraryExportJob::run() {
     // underneath this crate.
     auto optionalExtRootCrate = m_pDb->root_crate_by_name(MixxxRootCrateName);
     auto extRootCrate = optionalExtRootCrate
-        ? optionalExtRootCrate.value()
-        : m_pDb->create_root_crate(MixxxRootCrateName);
+            ? optionalExtRootCrate.value()
+            : m_pDb->create_root_crate(MixxxRootCrateName);
     for (const TrackRef& trackRef : trackRefs) {
         // Add each track to the root crate, even if it also belongs to others.
         if (!m_mixxxToEngineLibraryTrackIdMap.contains(trackRef.getId())) {
             qInfo() << "Not adding track" << trackRef.getId()
-                << "to any crates, as it was not exported";
+                    << "to any crates, as it was not exported";
             continue;
         }
 
@@ -430,7 +430,9 @@ void EngineLibraryExportJob::run() {
     for (const CrateId& crateId : crateIds) {
         qInfo() << "Exporting crate" << crateId.value() << "...";
         exportCrate(*m_trackCollectionManager.internalCollection(),
-                extRootCrate, m_mixxxToEngineLibraryTrackIdMap, crateId);
+                extRootCrate,
+                m_mixxxToEngineLibraryTrackIdMap,
+                crateId);
 
         ++currProgress;
         emit(jobProgress(currProgress / maxProgress));

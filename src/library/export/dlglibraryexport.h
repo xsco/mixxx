@@ -27,8 +27,7 @@ class DlgLibraryExport : public QDialog {
 
   public:
     DlgLibraryExport(
-            QWidget* parent, UserSettingsPointer pConfig,
-            TrackCollectionManager& trackCollectionManager);
+            QWidget* parent, UserSettingsPointer pConfig, TrackCollectionManager& trackCollectionManager);
 
   signals:
     // The startExport signal is emitted when sufficient information has been
