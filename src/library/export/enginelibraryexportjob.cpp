@@ -1,6 +1,6 @@
 #include "library/export/enginelibraryexportjob.h"
 
-#include <iostream>
+#include <stdexcept>
 
 #include <djinterop/djinterop.hpp>
 
@@ -53,8 +53,17 @@ stdx::optional<djinterop::musical_key> toDjinteropKey(
 
 std::string exportFile(const EngineLibraryExportRequest& request,
         TrackPointer pTrack) {
-    if (!request.engineLibraryDbDir.exists() || !request.musicFilesDir.exists()) {
-        // TODO (haslersn): Throw something
+    if (!request.engineLibraryDbDir.exists()) {
+        auto msg = QString(
+                "Engine Library DB directory %1 has been removed from disk!")
+            .arg(request.engineLibraryDbDir.absolutePath());
+        throw std::runtime_error{msg.toStdString()};
+    }
+    else if (!request.musicFilesDir.exists()) {
+        auto msg = QString(
+                "Music file export directory %1 has been removed from disk!")
+            .arg(request.musicFilesDir.absolutePath());
+        throw std::runtime_error{msg.toStdString()};
     }
 
     // Copy music files into the Mixxx export dir, if the source file has
@@ -83,7 +92,7 @@ djinterop::track getTrackByRelativePath(
     case 1:
         return trackCandidates.front();
     default:
-        std::cout << "Warning: More than one external track with the same relative path";
+        qInfo() << "Warning: More than one external track with the same relative path";
         return trackCandidates.front();
     }
 }
@@ -124,7 +133,7 @@ void exportMetadata(djinterop::database &db,
     auto sampleCount = static_cast<int64_t>(pTrack->getDuration() * pTrack->getSampleRate());
     externalTrack.set_sampling({static_cast<double>(pTrack->getSampleRate()), sampleCount});
 
-    // TODO (mr-smidge) - Set average loudness.
+    // TODO(mr-smidge) - Set average loudness.
     externalTrack.set_average_loudness(0.5f);
 
     // Fill in beat grid.  For now, assume a constant average BPM across
@@ -186,9 +195,16 @@ void exportMetadata(djinterop::database &db,
     // it to the Engine Library database here.
     externalTrack.set_loops({});
 
-    // TODO (mr-smidge) write summary waveform.
+    // Write overview waveform.
+    if (pWaveformSummary) {
+        // TODO (mr-smidge) write summary waveform.
+    }
+    else {
+        qInfo() << "No waveform summary data found for track" << pTrack->getId()
+            << "(" << pTrack->getFileInfo().fileName() << ")";
+    }
 
-    // Write high-resolution full waveform
+    // Write high-resolution full waveform.
     if (pWaveform) {
         int64_t externalWaveformSize = externalTrack.recommended_waveform_size();
         std::vector<djinterop::waveform_entry> externalWaveform;
@@ -399,8 +415,14 @@ void EngineLibraryExportJob::run() {
         : m_pDb->create_root_crate(MixxxRootCrateName);
     for (const TrackRef& trackRef : trackRefs) {
         // Add each track to the root crate, even if it also belongs to others.
-        // FIXME (mr-smidge) - if analysis terminated early, hash map may not contain an entry!
-        auto extTrackId = m_mixxxToEngineLibraryTrackIdMap[trackRef.getId()];
+        if (!m_mixxxToEngineLibraryTrackIdMap.contains(trackRef.getId())) {
+            qInfo() << "Not adding track" << trackRef.getId()
+                << "to any crates, as it was not exported";
+            continue;
+        }
+
+        auto extTrackId = m_mixxxToEngineLibraryTrackIdMap.value(
+                trackRef.getId());
         extRootCrate.add_track(extTrackId);
     }
 
