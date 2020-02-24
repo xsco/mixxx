@@ -67,13 +67,12 @@ std::string exportFile(const EngineLibraryExportRequest& request,
 
     // Copy music files into the Mixxx export dir, if the source file has
     // been modified (or the destination doesn't exist).  To ensure no
-    // chance of filename clashes, and to keep things simple, we will name
-    // the destination files after the DB track identifier.
+    // chance of filename clashes, and to keep things simple, we will prefix
+    // the destination files with the DB track identifier.
     TrackFile srcFileInfo = pTrack->getFileInfo();
     auto trackId = pTrack->getId().value();
-    auto dstFilename = std::to_string(trackId) + "." +
-            srcFileInfo.asFileInfo().suffix().toStdString();
-    auto dstPath = request.musicFilesDir.filePath(QString::fromStdString(dstFilename));
+    QString dstFilename = QString::number(trackId) + " - " + srcFileInfo.fileName();
+    QString dstPath = request.musicFilesDir.filePath(dstFilename);
     if (!QFile::exists(dstPath) ||
             srcFileInfo.fileLastModified() > QFileInfo{dstPath}.lastModified()) {
         auto srcPath = srcFileInfo.location();
@@ -367,7 +366,8 @@ void EngineLibraryExportJob::run() {
     // additional count for setting up the database at the start.
     double maxProgress = trackRefs.size() + crateIds.size() + 1;
     double currProgress = 0;
-    emit(jobProgress(currProgress / maxProgress));
+    emit(jobMaximum(maxProgress));
+    emit(jobProgress(currProgress));
 
     // Ensure that the database exists, creating an empty one if not.
     bool created;
@@ -379,7 +379,7 @@ void EngineLibraryExportJob::run() {
         m_pDb.reset(new djinterop::database{db});
     }
     ++currProgress;
-    emit(jobProgress(currProgress / maxProgress));
+    emit(jobProgress(currProgress));
 
     // We will build up a map from Mixxx track id to EL track id during export.
     m_mixxxToEngineLibraryTrackIdMap.clear();
@@ -402,7 +402,7 @@ void EngineLibraryExportJob::run() {
         ++currProgress;
         ++tracksDone;
         qInfo() << "Track export progress" << tracksDone << "/" << trackRefs.size();
-        emit(jobProgress(currProgress / maxProgress));
+        emit(jobProgress(currProgress));
     }
 
     // We will ensure that there is a special top-level crate representing the
@@ -434,10 +434,16 @@ void EngineLibraryExportJob::run() {
                 crateId);
 
         ++currProgress;
-        emit(jobProgress(currProgress / maxProgress));
+        emit(jobProgress(currProgress));
     }
 
     qInfo() << "Engine Library Export Job completed successfully";
+}
+
+void EngineLibraryExportJob::cancel()
+{
+    // TODO (mr-smidge): implement cancellation!
+    qInfo() << "Would cancel...";
 }
 
 } // namespace mixxx

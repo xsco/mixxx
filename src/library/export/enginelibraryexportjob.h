@@ -29,7 +29,11 @@ class EngineLibraryExportJob : public QThread {
     void run() override;
 
   signals:
-    void jobProgress(double progress);
+    void jobMaximum(int maximum);
+    void jobProgress(int progress);
+
+  public slots:
+    void cancel();
 
   private slots:
     void trackLoaded(TrackRef trackRef, TrackPointer trackPtr);
