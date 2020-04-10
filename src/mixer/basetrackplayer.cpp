@@ -11,6 +11,7 @@
 #include "engine/enginebuffer.h"
 #include "engine/controls/enginecontrol.h"
 #include "engine/channels/enginedeck.h"
+#include "engine/engine.h"
 #include "engine/enginemaster.h"
 #include "track/beatgrid.h"
 #include "waveform/renderers/waveformwidgetrenderer.h"
@@ -46,8 +47,6 @@ BaseTrackPlayerImpl::BaseTrackPlayerImpl(QObject* pParent,
                                 pEffectsManager, defaultOrientation);
 
     m_pInputConfigured = std::make_unique<ControlProxy>(group, "input_configured", this);
-    m_pPassthroughEnabled = std::make_unique<ControlProxy>(group, "passthrough", this);
-    m_pPassthroughEnabled->connectValueChanged(this, &BaseTrackPlayerImpl::slotPassthroughEnabled);
 #ifdef __VINYLCONTROL__
     m_pVinylControlEnabled = std::make_unique<ControlProxy>(group, "vinylcontrol_enabled", this);
     m_pVinylControlEnabled->connectValueChanged(this, &BaseTrackPlayerImpl::slotVinylControlEnabled);
@@ -126,9 +125,11 @@ BaseTrackPlayerImpl::~BaseTrackPlayerImpl() {
 
 TrackPointer BaseTrackPlayerImpl::loadFakeTrack(bool bPlay, double filebpm) {
     TrackPointer pTrack(Track::newTemporary());
-    pTrack->setSampleRate(44100);
-    // 10 seconds
-    pTrack->setDuration(10);
+    pTrack->setAudioProperties(
+            mixxx::kEngineChannelCount,
+            mixxx::audio::SampleRate(44100),
+            mixxx::audio::Bitrate(),
+            mixxx::Duration::fromSeconds(10));
     if (filebpm > 0) {
         pTrack->setBpm(filebpm);
     }
@@ -181,7 +182,7 @@ void BaseTrackPlayerImpl::loadTrack(TrackPointer pTrack) {
         QListIterator<CuePointer> it(trackCues);
         while (it.hasNext()) {
             CuePointer pCue(it.next());
-            if (pCue->getType() == Cue::Type::Loop) {
+            if (pCue->getType() == mixxx::CueType::Loop) {
                 double loopStart = pCue->getPosition();
                 double loopEnd = loopStart + pCue->getLength();
                 if (loopStart != kNoTrigger && loopEnd != kNoTrigger && loopStart <= loopEnd) {
@@ -220,13 +221,13 @@ TrackPointer BaseTrackPlayerImpl::unloadTrack() {
         QListIterator<CuePointer> it(cuePoints);
         while (it.hasNext()) {
             CuePointer pCue(it.next());
-            if (pCue->getType() == Cue::Type::Loop) {
+            if (pCue->getType() == mixxx::CueType::Loop) {
                 pLoopCue = pCue;
             }
         }
         if (!pLoopCue) {
             pLoopCue = m_pLoadedTrack->createAndAddCue();
-            pLoopCue->setType(Cue::Type::Loop);
+            pLoopCue->setType(mixxx::CueType::Loop);
         }
         pLoopCue->setStartPosition(loopStart);
         pLoopCue->setEndPosition(loopEnd);
@@ -497,18 +498,6 @@ void BaseTrackPlayerImpl::setupEqControls() {
     m_pHighFilterKill = std::make_unique<ControlProxy>(group, "filterHighKill", this);
     m_pRateRatio = std::make_unique<ControlProxy>(group, "rate_ratio", this);
     m_pPitchAdjust = std::make_unique<ControlProxy>(group, "pitch_adjust", this);
-}
-
-void BaseTrackPlayerImpl::slotPassthroughEnabled(double v) {
-    bool configured = m_pInputConfigured->toBool();
-    bool passthrough = v > 0.0;
-
-    // Warn the user if they try to enable passthrough on a player with no
-    // configured input.
-    if (!configured && passthrough) {
-        m_pPassthroughEnabled->set(0.0);
-        emit noPassthroughInputConfigured();
-    }
 }
 
 void BaseTrackPlayerImpl::slotVinylControlEnabled(double v) {

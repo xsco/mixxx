@@ -297,6 +297,7 @@ void Library::bindLibraryWidget(WLibrary* pLibraryWidget,
                     pLibraryWidget,
                     m_pConfig,
                     m_pTrackCollectionManager,
+                    pLibraryWidget->getTrackTableBackgroundColorOpacity(),
                     true);
     pTrackTableView->installEventFilter(pKeyboard);
     connect(this,

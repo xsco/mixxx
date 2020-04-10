@@ -53,7 +53,7 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
 
     TrackId getTrackIdByRef(
             const TrackRef& trackRef) const;
-    QList<TrackId> getAllTrackIds(
+    QList<TrackRef> getAllTrackRefs(
             const QDir& rootDir);
     QList<TrackRef> getAllTrackRefs(
             const QDir& rootDir);
@@ -62,9 +62,8 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
             const TrackRef& trackRef) const;
 
     // Returns a set of all track locations in the library.
-    QSet<QString> getTrackLocations();
+    QSet<QString> getAllTrackLocations();
     QString getTrackLocation(TrackId trackId);
-    QStringList getTrackLocations(const QList<TrackId>& trackIds);
 
     // Only used by friend class LibraryScanner, but public for testing!
     bool detectMovedTracks(
@@ -79,6 +78,7 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
     void trackDirty(TrackId trackId) const;
     void trackClean(TrackId trackId) const;
     void trackChanged(TrackId trackId);
+    void tracksChanged(QSet<TrackId> trackIds);
     void tracksAdded(QSet<TrackId> trackIds);
     void tracksRemoved(QSet<TrackId> trackIds);
     void dbTrackAdded(TrackPointer pTrack);
@@ -90,11 +90,6 @@ class TrackDAO : public QObject, public virtual DAO, public virtual GlobalTrackC
     void databaseTrackAdded(TrackPointer pTrack);
     void databaseTracksChanged(QSet<TrackId> changedTracks);
     void databaseTracksRelocated(QList<RelocatedTrack> relocatedTracks);
-
-  private slots:
-    void slotTrackDirty(Track* pTrack);
-    void slotTrackChanged(Track* pTrack);
-    void slotTrackClean(Track* pTrack);
 
   private:
     friend class LibraryScanner;

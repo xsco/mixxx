@@ -105,6 +105,7 @@ class MixxxMainWindow : public QMainWindow {
 
     // Warn the user when inputs are not configured.
     void slotNoMicrophoneInputConfigured();
+    void slotNoAuxiliaryInputConfigured();
     void slotNoDeckPassthroughInputConfigured();
     void slotNoVinylControlInputConfigured();
 
