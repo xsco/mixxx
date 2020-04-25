@@ -176,7 +176,7 @@ void exportMetadata(djinterop::database& db,
     auto cues = pTrack->getCuePoints();
     for (const CuePointer& pCue : cues) {
         // We are only interested in hot cues.
-        if (pCue.get() == nullptr || pCue->getType() != Cue::Type::HotCue) {
+        if (pCue.get() == nullptr || pCue->getType() != CueType::HotCue) {
             continue;
         }
 
