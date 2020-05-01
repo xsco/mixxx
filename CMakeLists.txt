@@ -1223,10 +1223,32 @@ if(WIN32 AND STATIC_DEPS)
 endif()
 
 # libdjinterop
-find_package(DjInterop REQUIRED)
-target_link_libraries(mixxx-lib PUBLIC DjInterop::DjInterop)
-if(WIN32 AND STATIC_DEPS)
-    target_compile_definitions(mixxx-lib PUBLIC DjInterop__NO_DLL)
+find_package(DjInterop)
+cmake_dependent_option(DJINTEROP_INTERNAL "Use internal libdjinterop" ON "DjInterop_FOUND" ON)
+if (DJINTEROP_INTERNAL)
+  message(STATUS "Preparing internal libdjinterop")
+  set(DJINTEROP_LIBRARY "${CMAKE_INSTALL_LIBDIR}/${CMAKE_STATIC_LIBRARY_PREFIX}libdjinterop${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  ExternalProject_Add(libdjinterop
+    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib/libdjinterop"
+    BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/lib/libdjinterop"
+    INSTALL_DIR "${CMAKE_CURRENT_BINARY_DIR}/lib/libdjinterop-install"
+    CMAKE_ARGS "-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}" -DCMAKE_INSTALL_PREFIX:PATH=<INSTALL_DIR>
+    BUILD_BYPRODUCTS <INSTALL_DIR>/${DJINTEROP_LIBRARY}
+  )
+  set_target_properties(libdjinterop PROPERTIES EXCLUDE_FROM_ALL TRUE)
+
+  add_library(mixxx-libdjinterop STATIC IMPORTED)
+  add_dependencies(mixxx-libdjinterop libdjinterop)
+  set(DJINTEROP_LIBRARY_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/lib/libdjinterop-install/${DJINTEROP_LIBRARY}")
+  message(STATUS "Linking internal libdjinterop statically: ${DJINTEROP_LIBRARY_LOCATION}")
+  set_target_properties(mixxx-libdjinterop PROPERTIES
+    IMPORTED_LOCATION "${DJINTEROP_LIBRARY_LOCATION}"
+    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/lib/libdjinterop/include"
+  )
+  target_link_libraries(mixxx-lib PUBLIC mixxx-libdjinterop)
+else()
+  message(STATUS "Linking to system-installed libdjinterop")
+  target_link_libraries(mixxx-lib PUBLIC DjInterop::DjInterop)
 endif()
 
 # Ebur128

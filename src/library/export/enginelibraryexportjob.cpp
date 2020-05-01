@@ -1,5 +1,6 @@
 #include "library/export/enginelibraryexportjob.h"
 
+#include <optional>
 #include <stdexcept>
 
 #include <djinterop/djinterop.hpp>
@@ -10,7 +11,6 @@
 #include "waveform/waveformfactory.h"
 
 namespace el = djinterop::enginelibrary;
-namespace stdx = djinterop::stdx;
 
 namespace mixxx {
 
@@ -18,10 +18,10 @@ namespace {
 
 const std::string MixxxRootCrateName = "Mixxx";
 
-stdx::optional<djinterop::musical_key> toDjinteropKey(
+std::optional<djinterop::musical_key> toDjinteropKey(
         mixxx::track::io::key::ChromaticKey key) {
-    static const std::array<stdx::optional<djinterop::musical_key>, 25> keyMap{{
-            stdx::nullopt,                         // INVALID = 0,
+    static const std::array<std::optional<djinterop::musical_key>, 25> keyMap{{
+            std::nullopt,                          // INVALID = 0,
             djinterop::musical_key::c_major,       // C_MAJOR = 1,
             djinterop::musical_key::d_flat_major,  // D_FLAT_MAJOR = 2,
             djinterop::musical_key::d_major,       // D_MAJOR = 3,
