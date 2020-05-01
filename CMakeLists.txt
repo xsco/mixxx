@@ -1227,7 +1227,7 @@ find_package(DjInterop)
 cmake_dependent_option(DJINTEROP_INTERNAL "Use internal libdjinterop" ON "DjInterop_FOUND" ON)
 if (DJINTEROP_INTERNAL)
   message(STATUS "Preparing internal libdjinterop")
-  set(DJINTEROP_LIBRARY "${CMAKE_INSTALL_LIBDIR}/${CMAKE_STATIC_LIBRARY_PREFIX}libdjinterop${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  set(DJINTEROP_LIBRARY "${CMAKE_INSTALL_LIBDIR}/${CMAKE_STATIC_LIBRARY_PREFIX}djinterop${CMAKE_STATIC_LIBRARY_SUFFIX}")
   ExternalProject_Add(libdjinterop
     SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/lib/libdjinterop"
     BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/lib/libdjinterop"
@@ -1246,6 +1246,9 @@ if (DJINTEROP_INTERNAL)
     INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/lib/libdjinterop/include"
   )
   target_link_libraries(mixxx-lib PUBLIC mixxx-libdjinterop)
+
+  find_package(ZLIB 1.2.8 REQUIRED)
+  target_link_libraries(mixxx-lib PUBLIC ${ZLIB_LIBRARIES} ${CMAKE_DL_LIBS})
 else()
   message(STATUS "Linking to system-installed libdjinterop")
   target_link_libraries(mixxx-lib PUBLIC DjInterop::DjInterop)
