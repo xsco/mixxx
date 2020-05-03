@@ -548,6 +548,7 @@ TrackCollection& Library::trackCollection() {
     return *m_pTrackCollectionManager->internalCollection();
 }
 
+#ifdef __DJINTEROP__
 std::unique_ptr<mixxx::LibraryExporter> Library::makeLibraryExporter(
         QWidget* parent) {
     // New object is expected to be owned (and lifecycle-managed)
@@ -555,4 +556,5 @@ std::unique_ptr<mixxx::LibraryExporter> Library::makeLibraryExporter(
     return std::make_unique<mixxx::LibraryExporter>(
             parent, m_pConfig, *m_pTrackCollectionManager);
 }
+#endif
 

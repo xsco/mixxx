@@ -54,9 +54,11 @@ class SoundManager;
 class VinylControlManager;
 class WMainMenuBar;
 
+#ifdef __DJINTEROP__
 namespace mixxx {
 class LibraryExporter;
 } // namespace mixxx
+#endif
 
 typedef QSharedPointer<SettingsManager> SettingsManagerPointer;
 
@@ -195,8 +197,10 @@ class MixxxMainWindow : public QMainWindow {
     /** Pointer to preference dialog */
     DlgPreferences* m_pPrefDlg;
 
+#ifdef __DJINTEROP__
     // Library exporter
     std::unique_ptr<mixxx::LibraryExporter> m_pLibraryExporter;
+#endif
 
     ConfigObject<ConfigValueKbd>* m_pKbdConfig;
     ConfigObject<ConfigValueKbd>* m_pKbdConfigEmpty;

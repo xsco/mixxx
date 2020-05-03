@@ -1,3 +1,4 @@
+#ifdef __DJINTEROP__
 #pragma once
 
 #include <memory>
@@ -40,3 +41,4 @@ class LibraryExporter : public QWidget {
 };
 
 } // namespace mixxx
+#endif

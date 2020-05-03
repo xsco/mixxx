@@ -162,7 +162,9 @@ MixxxMainWindow::MixxxMainWindow(QApplication* pApp, const CmdlineArgs& args)
           m_pMenuBar(nullptr),
           m_pDeveloperToolsDlg(nullptr),
           m_pPrefDlg(nullptr),
+#ifdef __DJINTEROP__
           m_pLibraryExporter(nullptr),
+#endif
           m_pKbdConfig(nullptr),
           m_pKbdConfigEmpty(nullptr),
           m_toolTipsCfg(mixxx::TooltipsPreference::TOOLTIPS_ON),
@@ -470,8 +472,10 @@ void MixxxMainWindow::initialize(QApplication* pApp, const CmdlineArgs& args) {
     m_pPrefDlg->setWindowIcon(QIcon(":/images/mixxx_icon.svg"));
     m_pPrefDlg->setHidden(true);
 
+#ifdef __DJINTEROP__
     // Initialise library exporter
     m_pLibraryExporter = m_pLibrary->makeLibraryExporter(this);
+#endif
 
     launchProgress(60);
 
@@ -727,8 +731,10 @@ void MixxxMainWindow::finalize() {
     // or samplers when PlayerManager was destroyed!
     PlayerInfo::destroy();
 
+#ifdef __DJINTEROP__
     qDebug() << t.elapsed(false).debugMillisWithUnit() << "deleting LibraryExporter";
     m_pLibraryExporter = nullptr; // is a unique_ptr
+#endif
 
     // Delete the library after the view so there are no dangling pointers to
     // the data models.
@@ -1224,10 +1230,12 @@ void MixxxMainWindow::connectMenuBar() {
                 &Library::slotCreatePlaylist);
     }
 
+#ifdef __DJINTEROP__
     if (m_pLibraryExporter) {
         connect(m_pMenuBar, SIGNAL(exportLibrary()),
                 m_pLibraryExporter.get(), SLOT(requestExport()));
     }
+#endif
 }
 
 void MixxxMainWindow::slotFileLoadSongPlayer(int deck) {

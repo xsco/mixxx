@@ -1,3 +1,4 @@
+#ifdef __DJINTEROP__
 #pragma once
 
 #include <QDir>
@@ -16,3 +17,4 @@ struct EngineLibraryExportRequest : public ExportRequest {
 };
 
 } // namespace mixxx
+#endif

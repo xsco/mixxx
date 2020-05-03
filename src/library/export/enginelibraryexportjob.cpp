@@ -1,3 +1,4 @@
+#ifdef __DJINTEROP__
 #include "library/export/enginelibraryexportjob.h"
 
 #include <optional>
@@ -447,3 +448,4 @@ void EngineLibraryExportJob::cancel()
 }
 
 } // namespace mixxx
+#endif
