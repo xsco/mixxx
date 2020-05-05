@@ -15,10 +15,10 @@ class TrackCollectionManager;
 namespace mixxx {
 class TrackLoader;
 
-// The LibraryExporter class allows an export of the Mixxx library to be
-// initiated.  It can present a dialog that gathers information from the user
-// about the nature of the export, and schedules a job to perform the export.
-// The class uses libdjinterop to perform the export.
+/// The LibraryExporter class allows an export of the Mixxx library to be
+/// initiated.  It can present a dialog that gathers information from the user
+/// about the nature of the export, and schedules a job to perform the export.
+/// The class uses libdjinterop to perform the export.
 class LibraryExporter : public QWidget {
     Q_OBJECT
   public:
@@ -27,7 +27,7 @@ class LibraryExporter : public QWidget {
             TrackCollectionManager& trackCollectionManager);
 
   public slots:
-    // Begin the process of a library export.
+    /// Begin the process of a library export.
     void requestExport();
 
   private slots:

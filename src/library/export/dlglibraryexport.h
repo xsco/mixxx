@@ -17,12 +17,12 @@ class TrackCollectionManager;
 
 namespace mixxx {
 
-// The DlgLibraryExport class is a UI window that gathers information from
-// the user about how they would like to export the Mixxx library.
-//
-// Currently, the dialog only supports exporting to the Engine Library format,
-// but in future it is expected that this dialog could be expanded to include
-// other formats, and generate different export signals accordingly.
+/// The DlgLibraryExport class is a UI window that gathers information from
+/// the user about how they would like to export the Mixxx library.
+///
+/// Currently, the dialog only supports exporting to the Engine Library format,
+/// but in future it is expected that this dialog could be expanded to include
+/// other formats, and generate different export signals accordingly.
 class DlgLibraryExport : public QDialog {
     Q_OBJECT
 
@@ -31,9 +31,9 @@ class DlgLibraryExport : public QDialog {
             QWidget* parent, UserSettingsPointer pConfig, TrackCollectionManager& trackCollectionManager);
 
   signals:
-    // The startExport signal is emitted when sufficient information has been
-    // gathered from the user to kick off an Engine Library export, and details
-    // of the request are provided as part of the signal.
+    /// The startExport signal is emitted when sufficient information has been
+    /// gathered from the user to kick off an Engine Library export, and details
+    /// of the request are provided as part of the signal.
     void startEngineLibraryExport(EngineLibraryExportRequest) const;
 
   private slots:

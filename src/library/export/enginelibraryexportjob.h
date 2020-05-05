@@ -18,9 +18,9 @@
 
 namespace mixxx {
 
-// The Engine Library export job performs the work of exporting the Mixxx
-// library to an external Engine Library database, using the libdjinterop
-// library, in accordance with the export request with which it is constructed.
+/// The Engine Library export job performs the work of exporting the Mixxx
+/// library to an external Engine Library database, using the libdjinterop
+/// library, in accordance with the export request with which it is constructed.
 class EngineLibraryExportJob : public QThread {
     Q_OBJECT
   public:
