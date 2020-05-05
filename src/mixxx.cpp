@@ -50,7 +50,6 @@
 #include "library/library.h"
 #include "library/library_preferences.h"
 #include "library/export/libraryexporter.h"
-#include "library/trackcollection.h"
 #include "library/trackcollectionmanager.h"
 #include "mixer/playerinfo.h"
 #include "mixer/playermanager.h"
