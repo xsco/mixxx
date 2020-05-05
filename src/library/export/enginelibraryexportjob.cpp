@@ -3,6 +3,7 @@
 
 #include <optional>
 #include <stdexcept>
+#include <QStringList>
 
 #include <djinterop/djinterop.hpp>
 
@@ -18,6 +19,9 @@ namespace mixxx {
 namespace {
 
 const std::string MixxxRootCrateName = "Mixxx";
+
+// TODO(mr-smidge) fill in list of supported file types.
+const QStringList SupportedFileTypes = {"mp3", "flac", "ogg"};
 
 std::optional<djinterop::musical_key> toDjinteropKey(
         mixxx::track::io::key::ChromaticKey key) {
@@ -248,6 +252,14 @@ void exportTrack(TrackCollection& trackCollection,
                 WaveformFactory::loadWaveformFromAnalysis(waveformAnalysis));
     }
 
+    // Only export supported file types.
+    if (!SupportedFileTypes.contains(pTrack->getType())) {
+        qInfo() << "Skipping file" << pTrack->getFileInfo().fileName()
+            << "(id" << pTrack->getId() << ") as its file type"
+            << pTrack->getType() << "is not supported";
+        return;
+    }
+
     // Copy the file, if required.
     auto musicFileRelativePath = exportFile(request, pTrack);
 
@@ -443,7 +455,7 @@ void EngineLibraryExportJob::run() {
 
 void EngineLibraryExportJob::cancel()
 {
-    // TODO (mr-smidge): implement cancellation!
+    // TODO(mr-smidge): implement cancellation!
     qInfo() << "Would cancel...";
 }
 

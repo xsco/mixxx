@@ -43,7 +43,7 @@ void LibraryExporter::beginEngineLibraryExport(
     connect(pJobThread, &EngineLibraryExportJob::finished, pJobThread, &QObject::deleteLater);
 
     // Construct a modal dialog to monitor job progress.
-    // TODO (mr-smidge) - dialog doesn't appear to update with new progress until after track export?
+    // TODO(mr-smidge) - dialog doesn't appear to update with new progress until after track export?
     auto *pd = new QProgressDialog(this);
     pd->setLabelText(tr("Exporting to Engine Library..."));
     pd->setMinimumDuration(0);
