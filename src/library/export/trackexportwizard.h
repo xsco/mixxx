@@ -9,25 +9,22 @@
 #ifndef TRACKEXPORT_H
 #define TRACKEXPORT_H
 
-#include <QScopedPointer>
 #include <QString>
+#include <QScopedPointer>
 
+#include "preferences/usersettings.h"
 #include "library/export/trackexportdlg.h"
 #include "library/export/trackexportworker.h"
-#include "preferences/usersettings.h"
 #include "track/track.h"
-#include "util/memory.h"
-#include "util/parented_ptr.h"
 
 // A controller class for creating the export worker and UI.
 class TrackExportWizard : public QObject {
-    Q_OBJECT
+  Q_OBJECT
   public:
-    TrackExportWizard(QWidget* parent, UserSettingsPointer pConfig, QList<TrackPointer> tracks)
-            : m_parent(parent), m_pConfig(pConfig), m_tracks(tracks) {
-    }
-    virtual ~TrackExportWizard() {
-    }
+    TrackExportWizard(QWidget *parent, UserSettingsPointer pConfig,
+                      QList<TrackPointer> tracks)
+            : m_parent(parent), m_pConfig(pConfig), m_tracks(tracks) { }
+    virtual ~TrackExportWizard() { }
 
     // Displays a dialog requesting destination directory, then performs
     // track export if a folder is chosen.  Handles errors gracefully.
@@ -39,8 +36,8 @@ class TrackExportWizard : public QObject {
     QWidget* m_parent;
     UserSettingsPointer m_pConfig;
     QList<TrackPointer> m_tracks;
-    parented_ptr<TrackExportDlg> m_dialog;
-    std::unique_ptr<TrackExportWorker> m_worker;
+    QScopedPointer<TrackExportDlg> m_dialog;
+    QScopedPointer<TrackExportWorker> m_worker;
 };
 
-#endif // TRACKEXPORT_H
+#endif  // TRACKEXPORT_H

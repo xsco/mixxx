@@ -2,8 +2,8 @@
 
 #include <QFileDialog>
 #include <QFileInfo>
-#include <QMessageBox>
 #include <QStandardPaths>
+#include <QMessageBox>
 
 #include "util/assert.h"
 
@@ -16,18 +16,19 @@ void TrackExportWizard::exportTracks() {
 }
 
 bool TrackExportWizard::selectDestinationDirectory() {
-    QString lastExportDirectory =
-            m_pConfig->getValue(ConfigKey("[Library]", "LastTrackCopyDirectory"),
-                    QStandardPaths::writableLocation(QStandardPaths::MusicLocation));
+    QString lastExportDirectory = m_pConfig->getValue(
+            ConfigKey("[Library]", "LastTrackCopyDirectory"),
+            QStandardPaths::writableLocation(QStandardPaths::MusicLocation));
 
     QString destDir = QFileDialog::getExistingDirectory(
             NULL, tr("Export Track Files To"), lastExportDirectory);
     if (destDir.isEmpty()) {
         return false;
     }
-    m_pConfig->set(ConfigKey("[Library]", "LastTrackCopyDirectory"), ConfigValue(destDir));
+    m_pConfig->set(ConfigKey("[Library]", "LastTrackCopyDirectory"),
+                   ConfigValue(destDir));
 
-    m_worker = std::make_unique<TrackExportWorker>(destDir, m_tracks);
-    m_dialog = make_parented<TrackExportDlg>(m_parent, m_pConfig, m_worker.get());
+    m_worker.reset(new TrackExportWorker(destDir, m_tracks));
+    m_dialog.reset(new TrackExportDlg(m_parent, m_pConfig, m_worker.data()));
     return true;
 }
