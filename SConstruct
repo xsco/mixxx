@@ -62,7 +62,6 @@ available_features = [features.Mad,
                       # "Features" of dubious quality
                       features.PerfTools,
                       features.AsmLib,
-                      features.FFMPEG,
 
                       # Experimental features
                       features.DjInterop
