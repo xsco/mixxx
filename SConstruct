@@ -62,9 +62,6 @@ available_features = [features.Mad,
                       # "Features" of dubious quality
                       features.PerfTools,
                       features.AsmLib,
-
-                      # Experimental features
-                      features.DjInterop
                       ]
 
 build = mixxx.MixxxBuild(target, machine, build_type,
