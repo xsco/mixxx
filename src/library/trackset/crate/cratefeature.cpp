@@ -106,7 +106,7 @@ void CrateFeature::initActions() {
             &QAction::triggered,
             this,
             &CrateFeature::slotCreateImportCrate);
-    m_pExportPlaylistAction = make_parented<QAction>(tr("Export Crate"), this);
+    m_pExportPlaylistAction = make_parented<QAction>(tr("Export Crate as Playlist"), this);
     connect(m_pExportPlaylistAction.get(),
             &QAction::triggered,
             this,
@@ -116,6 +116,18 @@ void CrateFeature::initActions() {
             &QAction::triggered,
             this,
             &CrateFeature::slotExportTrackFiles);
+#ifdef __ENGINEPRIME__
+    m_pExportAllCratesAction = make_parented<QAction>(tr("Export to External Library"), this);
+    connect(m_pExportAllCratesAction.get(),
+            &QAction::triggered,
+            this,
+            &CrateFeature::slotExportAllCrates);
+    m_pExportCrateAction = make_parented<QAction>(tr("Export to External Library"), this);
+    connect(m_pExportCrateAction.get(),
+            &QAction::triggered,
+            this,
+            &CrateFeature::slotExportCrate);
+#endif
 }
 
 void CrateFeature::connectLibrary(Library* pLibrary) {
@@ -314,6 +326,10 @@ void CrateFeature::onRightClick(const QPoint& globalPos) {
     menu.addAction(m_pCreateCrateAction.get());
     menu.addSeparator();
     menu.addAction(m_pCreateImportPlaylistAction.get());
+#ifdef __ENGINEPRIME__
+    menu.addSeparator();
+    menu.addAction(m_pExportAllCratesAction.get());
+#endif
     menu.exec(globalPos);
 }
 
@@ -355,6 +371,9 @@ void CrateFeature::onRightClickChild(
     }
     menu.addAction(m_pExportPlaylistAction.get());
     menu.addAction(m_pExportTrackFilesAction.get());
+#ifdef __ENGINEPRIME__
+    menu.addAction(m_pExportCrateAction.get());
+#endif
     menu.exec(globalPos);
 }
 
@@ -814,3 +833,20 @@ void CrateFeature::slotTrackSelected(TrackPointer pTrack) {
 void CrateFeature::slotResetSelectedTrack() {
     slotTrackSelected(TrackPointer());
 }
+
+#ifdef __ENGINEPRIME__
+void CrateFeature::slotExportAllCrates() {
+    emit exportAllCrates();
+}
+
+void CrateFeature::slotExportCrate() {
+    if (!m_lastRightClickedIndex.isValid()) {
+        return;
+    }
+
+    CrateId crateId = crateIdFromIndex(m_lastRightClickedIndex);
+    if (crateId.isValid()) {
+        emit exportCrate(crateId);
+    }
+}
+#endif

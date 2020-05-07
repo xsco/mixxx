@@ -31,6 +31,9 @@
 #include "library/coverartcache.h"
 #include "library/library.h"
 #include "library/library_preferences.h"
+#ifdef __ENGINEPRIME__
+#include "library/export/libraryexporter.h"
+#endif
 #include "library/trackcollection.h"
 #include "library/trackcollectionmanager.h"
 #include "mixer/playerinfo.h"
@@ -143,6 +146,9 @@ MixxxMainWindow::MixxxMainWindow(QApplication* pApp, const CmdlineArgs& args)
           m_pLibrary(nullptr),
           m_pDeveloperToolsDlg(nullptr),
           m_pPrefDlg(nullptr),
+#ifdef __ENGINEPRIME__
+          m_pLibraryExporter(nullptr),
+#endif
           m_pKbdConfig(nullptr),
           m_pKbdConfigEmpty(nullptr),
           m_toolTipsCfg(mixxx::TooltipsPreference::TOOLTIPS_ON),
@@ -468,6 +474,19 @@ void MixxxMainWindow::initialize(QApplication* pApp, const CmdlineArgs& args) {
     m_pPrefDlg->setWindowIcon(QIcon(":/images/mixxx_icon.svg"));
     m_pPrefDlg->setHidden(true);
 
+#ifdef __ENGINEPRIME__
+    // Initialise library exporter
+    m_pLibraryExporter = m_pLibrary->makeLibraryExporter(this);
+    connect(m_pLibrary,
+            &Library::exportLibrary,
+            m_pLibraryExporter.get(),
+            &mixxx::LibraryExporter::requestExport);
+    connect(m_pLibrary,
+            &Library::exportCrate,
+            m_pLibraryExporter.get(),
+            &mixxx::LibraryExporter::requestExportWithInitialCrate);
+#endif
+
     launchProgress(60);
 
     // Connect signals to the menubar. Should be done before we go fullscreen
@@ -728,6 +747,11 @@ void MixxxMainWindow::finalize() {
     // pointers of tracks that were still loaded in decks
     // or samplers when PlayerManager was destroyed!
     PlayerInfo::destroy();
+
+#ifdef __ENGINEPRIME__
+    qDebug() << t.elapsed(false).debugMillisWithUnit() << "deleting LibraryExporter";
+    m_pLibraryExporter = nullptr; // is a unique_ptr
+#endif
 
     // Delete the library after the view so there are no dangling pointers to
     // the data models.
@@ -1211,6 +1235,15 @@ void MixxxMainWindow::connectMenuBar() {
                 m_pLibrary,
                 &Library::slotCreatePlaylist);
     }
+
+#ifdef __ENGINEPRIME__
+    if (m_pLibraryExporter) {
+        connect(m_pMenuBar,
+                SIGNAL(exportLibrary()),
+                m_pLibraryExporter.get(),
+                SLOT(requestExport()));
+    }
+#endif
 }
 
 void MixxxMainWindow::slotFileLoadSongPlayer(int deck) {

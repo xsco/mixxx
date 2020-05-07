@@ -37,6 +37,12 @@ class VinylControlManager;
 class VisualsManager;
 class WMainMenuBar;
 
+#ifdef __ENGINEPRIME__
+namespace mixxx {
+class LibraryExporter;
+} // namespace mixxx
+#endif
+
 /// This Class is the base class for Mixxx.
 /// It sets up the main window providing a menubar.
 /// For the main view, an instance of class MixxxView is
@@ -162,6 +168,11 @@ class MixxxMainWindow : public QMainWindow {
     DlgDeveloperTools* m_pDeveloperToolsDlg;
 
     DlgPreferences* m_pPrefDlg;
+
+#ifdef __ENGINEPRIME__
+    // Library exporter
+    std::unique_ptr<mixxx::LibraryExporter> m_pLibraryExporter;
+#endif
 
     ConfigObject<ConfigValueKbd>* m_pKbdConfig;
     ConfigObject<ConfigValueKbd>* m_pKbdConfigEmpty;
