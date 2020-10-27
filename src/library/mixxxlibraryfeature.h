@@ -64,10 +64,8 @@ class MixxxLibraryFeature final : public LibraryFeature {
 
 #ifdef __ENGINEPRIME__
   signals:
+    /// Inform that a request has been made to export the whole Mixxx library.
     void exportLibrary();
-
-  private slots:
-    void slotExportLibrary();
 #endif
 
   private:

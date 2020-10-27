@@ -146,9 +146,6 @@ MixxxMainWindow::MixxxMainWindow(QApplication* pApp, const CmdlineArgs& args)
           m_pLibrary(nullptr),
           m_pDeveloperToolsDlg(nullptr),
           m_pPrefDlg(nullptr),
-#ifdef __ENGINEPRIME__
-          m_pLibraryExporter(nullptr),
-#endif
           m_pKbdConfig(nullptr),
           m_pKbdConfigEmpty(nullptr),
           m_toolTipsCfg(mixxx::TooltipsPreference::TOOLTIPS_ON),
@@ -480,11 +477,11 @@ void MixxxMainWindow::initialize(QApplication* pApp, const CmdlineArgs& args) {
     connect(m_pLibrary,
             &Library::exportLibrary,
             m_pLibraryExporter.get(),
-            &mixxx::LibraryExporter::requestExport);
+            &mixxx::LibraryExporter::slotRequestExport);
     connect(m_pLibrary,
             &Library::exportCrate,
             m_pLibraryExporter.get(),
-            &mixxx::LibraryExporter::requestExportWithInitialCrate);
+            &mixxx::LibraryExporter::slotRequestExportWithInitialCrate);
 #endif
 
     launchProgress(60);
@@ -750,7 +747,7 @@ void MixxxMainWindow::finalize() {
 
 #ifdef __ENGINEPRIME__
     qDebug() << t.elapsed(false).debugMillisWithUnit() << "deleting LibraryExporter";
-    m_pLibraryExporter = nullptr; // is a unique_ptr
+    m_pLibraryExporter.reset();
 #endif
 
     // Delete the library after the view so there are no dangling pointers to
@@ -1239,9 +1236,9 @@ void MixxxMainWindow::connectMenuBar() {
 #ifdef __ENGINEPRIME__
     if (m_pLibraryExporter) {
         connect(m_pMenuBar,
-                SIGNAL(exportLibrary()),
+                &WMainMenuBar::exportLibrary,
                 m_pLibraryExporter.get(),
-                SLOT(requestExport()));
+                &mixxx::LibraryExporter::slotRequestExport);
     }
 #endif
 }
